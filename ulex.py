@@ -1,0 +1,246 @@
+from ply import lex
+from ply import yacc
+from ply.lex import LexError
+
+class ULexer(object):
+	reserved = {
+		'abstract':'ABSTRACT',
+		'always':'ALWAYS',
+		'array':'ARRAY',
+		'arraycount':'ARRAYCOUNT',
+		'assert':'ASSERT',
+		'auto':'AUTO',
+		'automated':'AUTOMATED',
+		'bool':'BOOL',
+		'break':'BREAK',
+		'button':'BUTTON',
+		'byte':'BYTE',
+		'case':'CASE',
+		'class':'CLASS',
+		'coerce':'COERCE',
+		'collapsecategories':'COLLAPSECATEGORIES',
+		'config':'CONFIG',
+		'const':'CONST',
+		'continue':'CONTINUE',
+		'default':'DEFAULT',
+		'defaultproperties':'DEFAULTPROPERTIES',
+		'delegate':'DELEGATE',
+		'dependson':'DEPENDSON',
+		'deprecated':'DEPRECATED',
+		'do':'DO',
+		'dontcollapsecategories':'DONTCOLLAPSECATEGORIES',
+		'edfindable':'EDFINDABLE',
+		'editconst':'EDITCONST',
+		'editconstarray':'EDITCONSTARRAY',
+		'editinline':'EDITINLINE',
+		'editinlinenew':'EDITINLINENEW',
+		'editinlinenotify':'EDITINLINENOTIFY',
+		'editinlineuse':'EDITINLINEUSE',
+		'else':'ELSE',
+		'enum':'ENUM',
+		'enumcount':'ENUMCOUNT',
+		'event':'EVENT',
+		'exec':'EXEC',
+		'expands':'EXPANDS',
+		'export':'EXPORT',
+		'exportstructs':'EXPORTSTRUCTS',
+		'extends':'EXTENDS',
+		'false':'FALSE',
+		'final':'FINAL',
+		'float':'FLOAT',
+		'for':'FOR',
+		'foreach':'FOREACH',
+		'function':'FUNCTION',
+		'global':'GLOBAL',
+		'globalconfig':'GLOBALCONFIG',
+		'goto':'GOTO',
+		'guid':'GUID',
+		'hidecategories':'HIDECATEGORIES',
+		'if':'IF',
+		'ignores':'IGNORES',
+		'import':'IMPORT',
+		'init':'INIT',
+		'input':'INPUT',
+		'insert':'INSERT',
+		'instanced':'INSTANCED',
+		'int':'INT',
+		'intrinsic':'INTRINSIC',
+		'invariant':'INVARIANT',
+		'iterator':'ITERATOR',
+		'latent':'LATENT',
+		'length':'LENGTH',
+		'local':'LOCAL',
+		'localized':'LOCALIZED',
+		'name':'NAME',
+		'nativ':'NATIV',
+		'nativereplication':'NATIVEREPLICATION',
+		'new':'NEW',
+		'noexport':'NOEXPORT',
+		'none':'NONE',
+		'noteditinlinenew':'NOTEDITINLINENEW',
+		'notplaceable':'NOTPLACEABLE',
+		'nousercreate':'NOUSERCREATE',
+		'operator':'OPERATOR',
+		'optional':'OPTIONAL',
+		'out':'OUT',
+		'perobjectconfig':'PEROBJECTCONFIG',
+		'placeable':'PLACEABLE',
+		'pointer':'POINTER',
+		'postoperator':'POSTOPERATOR',
+		'preoperator':'PREOPERATOR',
+		'private':'PRIVATE',
+		'protected':'PROTECTED',
+		'reliable':'RELIABLE',
+		'remove':'REMOVE',
+		'replication':'REPLICATION',
+		'return':'RETURN',
+		'rng':'RNG',
+		'rot':'ROT',
+		'safereplace':'SAFEREPLACE',
+		'self':'SELF',
+		'showcategories':'SHOWCATEGORIES',
+		'simulated':'SIMULATED',
+		'singular':'SINGULAR',
+		'skip':'SKIP',
+		'state':'STATE',
+		'static':'STATIC',
+		'stop':'STOP',
+		'string':'STRING',
+		'struct':'STRUCT',
+		'super':'SUPER',
+		'switch':'SWITCH',
+		'transient':'TRANSIENT',
+		'travel':'TRAVEL',
+		'true':'TRUE',
+		'unreliable':'UNRELIABLE',
+		'until':'UNTIL',
+		'var':'VAR',
+		'vect':'VECT',
+		'while':'WHILE',
+		'within':'WITHIN',
+		# the following are keywords added by ulex
+		'typeof':'TYPEOF',
+		'sizeof':'SIZEOF',
+		'template':'TEMPLATE',
+		'typedef':'TYPEDEF'
+	}
+
+	tokens = [
+		'COMMENT',
+		'UNAME',
+		'INTEGER',
+		'SEMICOLON',
+		'LPAREN',
+		'RPAREN',
+		'LSQUARE',
+		'RSQUARE',
+		'LANGLE',
+		'RANGLE',
+		'LCURLY',
+		'RCURLY',
+		'ASSIGN',
+		'COMMA',
+		'PERIOD',
+		'LQUOTE',
+		'RQUOTE',
+		'USTRING',
+		'EQUAL',
+		'NEQUAL',
+		'OR',
+		'NOT',
+		'INCREMENT',
+		'ADD',
+		'MULTIPLY',
+		'AND',
+		'MINUS',
+		'COLON',
+		'SEQUAL',
+		'MODULUS',
+		'SCONCAT',
+		'SCONCATSPACE',
+		'DIVIDE',
+		'REFERENCE',
+		'ID',
+		] + list(reserved.values())
+
+	t_LPAREN = r'\('
+	t_RPAREN = r'\)'
+	t_LSQUARE = r'\['
+	t_RSQUARE = r'\]'
+	t_LANGLE = r'\<'
+	t_RANGLE = r'\>'
+	t_LCURLY = r'\{'
+	t_RCURLY = r'\}'
+	t_LQUOTE = r'\"'
+	t_RQUOTE = r'\"'
+	t_ignore = '\r\t '
+	t_SEMICOLON = r';'
+	t_ASSIGN = r'\='
+	t_COMMA = r','
+	t_PERIOD = '\.'
+	t_EQUAL = r'=='
+	t_NEQUAL = r'!='
+	t_OR = r'\|\|'
+	t_NOT = r'!'
+	t_INCREMENT = r'\+\+'
+	t_ADD = r'\+'
+	t_MULTIPLY = r'\*'
+	t_AND = r'&&'
+	t_MINUS = r'-'
+	t_COLON = r':'
+	t_SEQUAL = r'~='
+	t_MODULUS = r'%'
+	t_SCONCAT = r'\$'
+	t_SCONCATSPACE = r'@'
+	t_DIVIDE = r'/'
+
+	def __init__(self, **kwargs):
+		self.lexer = lex.lex(module=self, **kwargs)
+
+	def t_REFERENCE(self, t):
+		r'([a-zA-Z0-9_\-]+)\'([a-zA-Z0-9_\-\.]+)\''
+		return t
+
+	def t_UNAME(self, t):
+		r'\'([a-zA-Z0-9_\- ]*)\''
+		return t
+
+	def t_USTRING(self, t):
+		r'"((\\{2})*|(.*?[^\\](\\{2})*))"'
+		return t
+
+	def t_INTEGER(self, t):
+		r'\d+'
+		return t
+
+	def t_FLOAT(self, t):
+		r'\d+\.\d+'
+		return t
+
+	def t_COMMENT(self, t):
+		r'//.*'
+
+	def t_ID(self, t):
+	    r'[a-zA-Z_][a-zA-Z_0-9]*'
+	    t.type = self.reserved.get(t.value, 'ID')
+	    return t
+
+	def t_newline(self, t):
+		r'\n+'
+		t.lexer.lineno += len(t.value)
+
+	def t_error(self, t):
+		pass
+
+	def test(self, data):
+		self.lexer.input(data)
+
+		try:
+			print len(list(iter(lex.token, None)))
+		except LexError as e:
+			print e
+
+with open('C:\Users\Colin Basnett\Desktop\ulextest.uc', 'rU') as f:
+	content = f.read()
+	lexer = ULexer()
+	lexer.test(content)
