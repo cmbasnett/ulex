@@ -263,13 +263,49 @@ class UnrealPackage(object):
 
 class UnrealClass(dict):
     def __init__(self, token_iter):
+        self.name = None
+        self.super = None
         self.enums = dict()
         self.structs = dict()
         self.variables = dict()
         self.functions = dict()
 
-        if token_iter.next().type != 'CLASS':
+        token = token_iter.next()
+
+        if token.type != 'CLASS':
             raise Exception()
+
+        token = token_iter.next()
+
+        # class name
+        if token.type != 'ID':
+            raise Exception()
+
+        self.name = token.value
+
+        token = token_iter.next()
+
+        if token.type != 'EXTENDS':
+            raise Exception()
+
+        # super
+        token = token_iter.next()
+
+        if token.type != 'ID':
+            raise Exception()
+
+        self.super = token.value
+
+        print self.name, self.super
+
+        # modifiers
+        while True:
+            token = token_iter.next()
+
+            if token.type == 'SEMICOLON':
+                break
+
+            print token
 
 
 class UnrealEnum(dict):
