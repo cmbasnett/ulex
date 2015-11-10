@@ -2,11 +2,73 @@ import os
 from ply import lex
 #from ply import yacc
 from ply.lex import LexError
+from more_itertools import peekable
 
 
 class UnrealLexer(object):
-    reserved = {
+
+    primitive_types = {
+        'float': 'FLOAT',
+        'int': 'INT',
+        'name': 'NAME',
+        'bool': 'BOOL',
+        'string': 'STRING',
+        'byte': 'BYTE'
+    }
+
+    class_modifiers = {
         'abstract': 'ABSTRACT',
+        'cacheexempt': 'CACHEEXEMPT',
+        'config': 'CONFIG',
+        'dependson': 'DEPENDSON',
+        'dontcollapsecategories': 'DONTCOLLAPSECATEGORIES',
+        'editinlinenew': 'EDITINLINENEW',
+        'exportstructs': 'EXPORTSTRUCTS',
+        'hidecategories': 'HIDECATEGORIES',
+        'hidedropdown': 'HIDEDROPDOWN',
+        'instanced': 'INSTANCED',
+        'native': 'NATIVE',
+        'nativereplication': 'NATIVEREPLICATION',
+        'noexport': 'NOEXPORT',
+        'nonativereplication': 'NONATIVEREPLICATION',
+        'noteditinlinenew': 'NOTEDITINLINENEW',
+        'notplaceable': 'NOTPLACEABLE',
+        'parseconfig': 'PARSECONFIG',
+        'perobjectconfig': 'PEROBJECTCONFIG',
+        'placeable': 'PLACEABLE',
+        'safereplace': 'SAFEREPLACE',
+        'showcategories': 'SHOWCATEGORIES',
+        'transient': 'TRANSIENT',
+        'within': 'WITHIN',
+        'template': 'TEMPLATE'
+    }
+
+    access_modifiers = {
+        'private': 'PRIVATE',
+        'protected': 'PROTECTED'
+    }
+
+    variable_modifiers = {
+        'automated': 'AUTOMATED',
+        'config': 'CONFIG',
+        'const': 'CONST',
+        'deprecated': 'DEPRECATED',
+        'edfindable': 'EDFINDABLE',
+        'editconst': 'EDITCONST',
+        'editconstarray': 'EDITCONSTARRAY',
+        'editinline': 'EDITINLINE',
+        '[no]?export': 'EXPORT',
+        'globalconfig': 'GLOBALCONFIG',
+        'input': 'INPUT',
+        'localized': 'LOCALIZED',
+        'native': 'NATIVE',
+        'private': 'PRIVATE',
+        'protected': 'PROTECTED',
+        'transient': 'TRANSIENT',
+        'travel': 'TRAVEL',
+    }
+
+    reserved = {
         'always': 'ALWAYS',
         'array': 'ARRAY',
         'arraycount': 'ARRAYCOUNT',
@@ -21,21 +83,11 @@ class UnrealLexer(object):
         'class': 'CLASS',
         'coerce': 'COERCE',
         'collapsecategories': 'COLLAPSECATEGORIES',
-        'config': 'CONFIG',
-        'const': 'CONST',
         'continue': 'CONTINUE',
         'default': 'DEFAULT',
         'defaultproperties': 'DEFAULTPROPERTIES',
         'delegate': 'DELEGATE',
-        'dependson': 'DEPENDSON',
-        'deprecated': 'DEPRECATED',
         'do': 'DO',
-        'dontcollapsecategories': 'DONTCOLLAPSECATEGORIES',
-        'edfindable': 'EDFINDABLE',
-        'editconst': 'EDITCONST',
-        'editconstarray': 'EDITCONSTARRAY',
-        'editinline': 'EDITINLINE',
-        'editinlinenew': 'EDITINLINENEW',
         'editinlinenotify': 'EDITINLINENOTIFY',
         'editinlineuse': 'EDITINLINEUSE',
         'else': 'ELSE',
@@ -44,8 +96,6 @@ class UnrealLexer(object):
         'event': 'EVENT',
         'exec': 'EXEC',
         'expands': 'EXPANDS',
-        'export': 'EXPORT',
-        'exportstructs': 'EXPORTSTRUCTS',
         'extends': 'EXTENDS',
         'false': 'FALSE',
         'final': 'FINAL',
@@ -57,14 +107,12 @@ class UnrealLexer(object):
         'globalconfig': 'GLOBALCONFIG',
         'goto': 'GOTO',
         'guid': 'GUID',
-        'hidecategories': 'HIDECATEGORIES',
         'if': 'IF',
         'ignores': 'IGNORES',
         'import': 'IMPORT',
         'init': 'INIT',
         'input': 'INPUT',
         'insert': 'INSERT',
-        'instanced': 'INSTANCED',
         'int': 'INT',
         'intrinsic': 'INTRINSIC',
         'invariant': 'INVARIANT',
@@ -74,33 +122,22 @@ class UnrealLexer(object):
         'local': 'LOCAL',
         'localized': 'LOCALIZED',
         'name': 'NAME',
-        'nativ': 'NATIV',
-        'nativereplication': 'NATIVEREPLICATION',
         'new': 'NEW',
-        'noexport': 'NOEXPORT',
         'none': 'NONE',
-        'noteditinlinenew': 'NOTEDITINLINENEW',
-        'notplaceable': 'NOTPLACEABLE',
         'nousercreate': 'NOUSERCREATE',
         'operator': 'OPERATOR',
         'optional': 'OPTIONAL',
         'out': 'OUT',
-        'perobjectconfig': 'PEROBJECTCONFIG',
-        'placeable': 'PLACEABLE',
         'pointer': 'POINTER',
         'postoperator': 'POSTOPERATOR',
         'preoperator': 'PREOPERATOR',
-        'private': 'PRIVATE',
-        'protected': 'PROTECTED',
         'reliable': 'RELIABLE',
         'remove': 'REMOVE',
         'replication': 'REPLICATION',
         'return': 'RETURN',
         'rng': 'RNG',
         'rot': 'ROT',
-        'safereplace': 'SAFEREPLACE',
         'self': 'SELF',
-        'showcategories': 'SHOWCATEGORIES',
         'simulated': 'SIMULATED',
         'singular': 'SINGULAR',
         'skip': 'SKIP',
@@ -111,21 +148,20 @@ class UnrealLexer(object):
         'struct': 'STRUCT',
         'super': 'SUPER',
         'switch': 'SWITCH',
-        'transient': 'TRANSIENT',
-        'travel': 'TRAVEL',
         'true': 'TRUE',
         'unreliable': 'UNRELIABLE',
         'until': 'UNTIL',
         'var': 'VAR',
         'vect': 'VECT',
         'while': 'WHILE',
-        'within': 'WITHIN',
         # the following are keywords added by ulex
         'typeof': 'TYPEOF',
         'sizeof': 'SIZEOF',
-        'template': 'TEMPLATE',
         'typedef': 'TYPEDEF'
     }
+
+    reserved.update(class_modifiers)
+    reserved.update(variable_modifiers)
 
     tokens = [
         'COMMENT',
@@ -203,7 +239,6 @@ class UnrealLexer(object):
     t_SCONCAT = r'\$'
     t_SCONCATSPACE = r'@'
     t_DIVIDE = r'/'
-    t_DIRECTIVE = r'\#(\w+)\s+(.+)'
     t_BITWISE_AND = r'\&'
     t_BITWISE_OR = r'\|'
     t_LEFT_SHIFT = r'<<'
@@ -213,6 +248,9 @@ class UnrealLexer(object):
 
     def __init__(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
+
+    def t_DIRECTIVE(self, t):
+        r'\#(\w+)\s+(.+)'
 
     def t_REFERENCE(self, t):
         r'([a-zA-Z0-9_\-]+)\'([a-zA-Z0-9_\-\.]+)\''
@@ -253,7 +291,7 @@ class UnrealLexer(object):
         self.lexer.input(data)
 
         #print len(list(iter(lex.token, None)))
-        UnrealClass(iter(lex.token, None))
+        UnrealClass(peekable(iter(lex.token, None)))
 
 
 class UnrealPackage(object):
@@ -261,42 +299,153 @@ class UnrealPackage(object):
         self.classes = dict()
 
 
+def assert_next_token_type(token_iter, type):
+    token = token_iter.next()
+
+    if token.type != type:
+        raise Exception('unexpected token \'{}\''.format(token.value))
+
+    return token
+
+
+def parse_template_parameters(token_iter):
+    arguments = []
+
+    assert_next_token_type(token_iter, 'LANGLE')
+
+    while True:
+        token = token_iter.next()
+
+        if token.type == 'ARRAY':
+            parse_template_parameters(token_iter)
+        if token.type == 'ID':
+            arguments.append(token.value)
+        if token.type == 'RANGLE':
+            break
+
+    return arguments
+
+
+def parse_modifier_arguments(token_iter):
+    arguments = []
+
+    assert_next_token_type(token_iter, 'LPAREN')
+
+    while True:
+        token = token_iter.next()
+
+        if token.type == 'ID':
+            arguments.append(token.value)
+        if token.type == 'RPAREN':
+            break
+
+    return arguments
+
+
+def parse_type(token_iter):
+    token = token_iter.next()
+
+    if token.type in UnrealLexer.primitive_types.values():
+        return token.value
+    elif token.type == 'ARRAY':  # array type must have one template parameter
+        template_parameters = parse_template_parameters(token_iter)
+        return token.value, template_parameters
+    elif token.type == 'CLASS':
+        print 'encountered class'
+        template_parameters = parse_template_parameters(token_iter)
+        return token.value, template_parameters
+    elif token.type == 'ID':
+        value = token.value
+        token = token_iter.peek()
+        if token.type == 'LANGLE':
+            template_parameters = parse_template_parameters(token_iter)
+            return value, template_parameters
+        else:
+            return value
+    else:
+        raise Exception('Unexpected token {}'.format(token))
+
+
+def parse_var(token_iter):
+    var = dict()
+    token = token_iter.peek()
+
+    # group (optional)
+    if token.type == 'LPAREN':
+        token_iter.next()  # consume LPAREN
+        token = token_iter.peek()
+
+        if token.type == 'ID':
+            # group name
+            token = token_iter.next()
+            assert_next_token_type(token_iter, 'RPAREN')
+            pass
+        elif token.type == 'RPAREN':
+            token = token_iter.next()  # consume RPAREN
+            pass
+
+    modifiers = []
+
+    # modifiers
+    while True:
+        token = token_iter.peek()
+
+        if token is None or token.value not in UnrealLexer.variable_modifiers.keys():
+            break
+
+        modifiers.append(token.value)
+
+        token = token_iter.next()
+
+        #print token.value
+
+    # type
+    var['type'] = parse_type(token_iter)
+
+    # name(s)
+    while True:
+        var['modifiers'] = modifiers
+        var['name'] = assert_next_token_type(token_iter, 'ID').value
+
+        # array length (optional)
+        token = token_iter.peek()
+
+        if token.type == 'LSQUARE':
+            token_iter.next()  # consume LSQUARE
+            assert_next_token_type(token_iter, 'INTEGER')
+            assert_next_token_type(token_iter, 'RSQUARE')
+
+        token = token_iter.peek()
+
+        if token.type == 'COMMA':
+            continue
+        if token.type == 'SEMICOLON':
+            break
+        else:
+            raise Exception('Unexpected token {}'.format(token))
+
+    return var
+
+
 class UnrealClass(dict):
     def __init__(self, token_iter):
-        self.name = None
         self.super = None
         self.enums = dict()
         self.structs = dict()
         self.variables = dict()
         self.functions = dict()
 
-        token = token_iter.next()
+        assert_next_token_type(token_iter, 'CLASS')
 
-        if token.type != 'CLASS':
-            raise Exception()
+        token = assert_next_token_type(token_iter, 'ID')
+        self['name'] = token.value
 
-        token = token_iter.next()
+        token = token_iter.peek()
 
-        # class name
-        if token.type != 'ID':
-            raise Exception()
-
-        self.name = token.value
-
-        token = token_iter.next()
-
-        if token.type != 'EXTENDS':
-            raise Exception()
-
-        # super
-        token = token_iter.next()
-
-        if token.type != 'ID':
-            raise Exception()
-
-        self.super = token.value
-
-        print self.name, self.super
+        if token.type == 'EXTENDS':
+            token_iter.next()  # consume extends
+            token = assert_next_token_type(token_iter, 'ID')
+            self['super'] = token.value
 
         # modifiers
         while True:
@@ -305,7 +454,39 @@ class UnrealClass(dict):
             if token.type == 'SEMICOLON':
                 break
 
-            print token
+            elif token.type == 'CONFIG':
+                token = token_iter.peek()
+                if token.type == 'LPAREN':
+                    token_iter.next()
+                    token = assert_next_token_type(token_iter, 'ID')
+                    self['config'] = token.value
+                    assert_next_token_type(token_iter, 'RPAREN')
+                else:
+                    self['config'] = self['name']
+            elif token.type == 'HIDECATEGORIES':
+                self['hidecategories'] = parse_modifier_arguments(token_iter)
+            elif token.type == 'SHOWCATEGORIES':
+                self['showcategories'] = parse_modifier_arguments(token_iter)
+            elif token.type == 'WITHIN':
+                token = assert_next_token_type(token_iter, 'ID')
+                self['within'] = token.value
+            elif token.type == 'TEMPLATE':
+                self['template'] = parse_modifier_arguments(token_iter)
+            elif token.type not in UnrealLexer.class_modifiers.values():
+                raise Exception(token.type)
+            else:
+                self[token.value] = True
+
+        while True:
+            try:
+                token = token_iter.next()
+            except StopIteration:
+                return
+
+            if token.type == 'VAR':
+                print parse_var(token_iter)
+            else:
+                break
 
 
 class UnrealEnum(dict):
@@ -365,4 +546,6 @@ for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour'):
             try:
                 lexer.input(content)
             except LexError as e:
+                print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
+            except Exception as e:
                 print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
