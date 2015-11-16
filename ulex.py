@@ -17,6 +17,15 @@ class UnrealLexer(object):
         'byte': 'BYTE'
     }
 
+    function_modifers = {
+        'final': 'FINAL',
+        'iterator': 'ITERATOR',
+        'latent': 'LATENT',
+        'native': 'NATIVE',
+        'simulated': 'SIMULATED',
+        'singular': 'SINGULAR'
+    }
+
     class_modifiers = {
         'abstract': 'ABSTRACT',
         'cacheexempt': 'CACHEEXEMPT',
@@ -47,6 +56,13 @@ class UnrealLexer(object):
     access_modifiers = {
         'private': 'PRIVATE',
         'protected': 'PROTECTED'
+    }
+
+    function_parameter_modifiers = {
+        'skip': 'SKIP',
+        'out': 'OUT',
+        'optional': 'OPTIONAL',
+        'coerce': 'COERCE'
     }
 
     variable_modifiers = {
@@ -359,6 +375,8 @@ def parse_type(token_iter):
         if token.type == 'LANGLE': # template parameters are optional when deducing class types!
             template_parameters = parse_template_parameters(token_iter)
         return token.value, template_parameters
+    elif token.type == 'ENUM':
+        return parse_enum(token_iter)
     elif token.type == 'ID':
         value = token.value
         token = token_iter.peek()
@@ -370,8 +388,76 @@ def parse_type(token_iter):
         raise Exception('Unexpected token {}'.format(token))
 
 
+def parse_enum(token_iter):
+    token = assert_next_token_type(token_iter, 'ID')
+    name = token.value
+    values = []
+    assert_next_token_type(token_iter, 'LCURLY')
+
+    while True:
+        token = token_iter.next()
+        if token.type == 'ID':
+            values.append(token.value)
+        if token.type == 'RCURLY':
+            break
+
+    return name, values
+
+
+def parse_function(token_iter):
+    function = dict()
+    modifiers = []
+
+    while True:
+        token = token_iter.next()
+
+        if token.type in UnrealLexer.function_modifers.values():
+            modifiers.append(token.value)
+        elif token.type == 'FUNCTION' or token.type == 'EVENT':
+            function['type'] = token.value
+            break
+        else:
+            raise Exception('Unexpected token {}'.format(token))
+
+    function['modifiers'] = modifiers
+
+    # function return types can be absent...parsing this is going to be crazy
+    tokens = []
+
+    while True:
+         token_iter.next()
+
+    function['name'] = assert_next_token_type(token_iter, 'ID').value
+
+    assert_next_token_type(token_iter, 'LPAREN')
+
+    function['parameters'] = []
+
+    while True:
+        parameter = dict()
+        parameter['modifiers'] = []
+
+        # function parameter modifiers
+        while True:
+            token = token_iter.peek()
+            if token.type in UnrealLexer.function_parameter_modifiers.values():
+                token = token_iter.next()
+                parameter['modifiers'].append(token.value)
+            else:
+                break
+
+        parameter['type'] = parse_type(token_iter)
+        parameter['name'] = assert_next_token_type(token_iter, 'ID')
+
+        function['parameters'].append(parameter)
+
+    return function
+
 def parse_var(token_iter):
-    var = dict()
+    vars = []
+
+    assert_next_token_type(token_iter, 'VAR')
+
     token = token_iter.peek()
 
     # group (optional)
@@ -404,6 +490,7 @@ def parse_var(token_iter):
         #print token.value
 
     # type
+    var = dict()
     var['type'] = parse_type(token_iter)
 
     # name(s)
@@ -416,14 +503,16 @@ def parse_var(token_iter):
 
         if token.type == 'LSQUARE':
             token_iter.next()  # consume LSQUARE
-            assert_next_token_type(token_iter, 'INTEGER')
+            var['length'] = assert_next_token_type(token_iter, 'INTEGER').value
             assert_next_token_type(token_iter, 'RSQUARE')
 
         token = token_iter.next()
 
         if token.type == 'COMMA':
+            vars.append(var)
             continue
-        if token.type == 'SEMICOLON':
+        elif token.type == 'SEMICOLON':
+            vars.append(var)
             break
         else:
             raise Exception('Unexpected token {}'.format(token))
@@ -483,12 +572,14 @@ class UnrealClass(dict):
 
         while True:
             try:
-                token = token_iter.next()
+                token = token_iter.peek()
             except StopIteration:
                 return
 
             if token.type == 'VAR':
                 print parse_var(token_iter)
+            elif token.type in UnrealLexer.function_modifers.values():
+                print parse_function(token_iter)
             else:
                 print token.type
                 break
