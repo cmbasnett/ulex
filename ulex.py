@@ -3,6 +3,7 @@ from ply import lex
 #from ply import yacc
 from ply.lex import LexError
 from more_itertools import peekable
+import sys
 
 
 class UnrealLexer(object):
@@ -57,11 +58,13 @@ class UnrealLexer(object):
         'editconst': 'EDITCONST',
         'editconstarray': 'EDITCONSTARRAY',
         'editinline': 'EDITINLINE',
-        '[no]?export': 'EXPORT',
+        'export': 'EXPORT',
+        'noexport': 'NOEXPORT',
         'globalconfig': 'GLOBALCONFIG',
         'input': 'INPUT',
         'localized': 'LOCALIZED',
         'native': 'NATIVE',
+        #'pointer': 'POINTER',
         'private': 'PRIVATE',
         'protected': 'PROTECTED',
         'transient': 'TRANSIENT',
@@ -128,7 +131,7 @@ class UnrealLexer(object):
         'operator': 'OPERATOR',
         'optional': 'OPTIONAL',
         'out': 'OUT',
-        'pointer': 'POINTER',
+        #'pointer': 'POINTER',
         'postoperator': 'POSTOPERATOR',
         'preoperator': 'PREOPERATOR',
         'reliable': 'RELIABLE',
@@ -351,17 +354,18 @@ def parse_type(token_iter):
         template_parameters = parse_template_parameters(token_iter)
         return token.value, template_parameters
     elif token.type == 'CLASS':
-        print 'encountered class'
-        template_parameters = parse_template_parameters(token_iter)
+        token = token_iter.peek()
+        template_parameters = None
+        if token.type == 'LANGLE': # template parameters are optional when deducing class types!
+            template_parameters = parse_template_parameters(token_iter)
         return token.value, template_parameters
     elif token.type == 'ID':
         value = token.value
         token = token_iter.peek()
-        if token.type == 'LANGLE':
+        template_parameters = None
+        if token.type == 'LANGLE': # template parameters are optional on types!
             template_parameters = parse_template_parameters(token_iter)
-            return value, template_parameters
-        else:
-            return value
+        return value, template_parameters
     else:
         raise Exception('Unexpected token {}'.format(token))
 
@@ -415,7 +419,7 @@ def parse_var(token_iter):
             assert_next_token_type(token_iter, 'INTEGER')
             assert_next_token_type(token_iter, 'RSQUARE')
 
-        token = token_iter.peek()
+        token = token_iter.next()
 
         if token.type == 'COMMA':
             continue
@@ -486,6 +490,7 @@ class UnrealClass(dict):
             if token.type == 'VAR':
                 print parse_var(token_iter)
             else:
+                print token.type
                 break
 
 
@@ -536,7 +541,9 @@ class UnrealFunctionParameter(dict):
         self.coerce = False
         self.skip = False
 
-for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour'):
+i = 0
+
+for root, dirs, files in os.walk('C:\Program Files (x86)\Steam\SteamApps\common\Red Orchestra'):
     for file in files:
         if os.path.splitext(file)[1] != '.uc':
             continue
@@ -549,3 +556,8 @@ for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour'):
                 print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
             except Exception as e:
                 print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
+
+        i = i + 1
+
+        if i > 100:
+            sys.exit(0)
