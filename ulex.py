@@ -404,6 +404,27 @@ def parse_enum(token_iter):
     return name, values
 
 
+def parse_defaultproperties(token_iter):
+    assert_next_token_type(token_iter, 'DEFAULTPROPERTIES')
+    assert_next_token_type(token_iter, 'LCURLY')
+
+    defaultproperties = dict()
+    key = ''
+
+    while True:
+        token = token_iter.read()
+
+        if token.type == 'RCURLY':
+            break
+        elif token.type == 'ID':
+            key = token.value
+            assert_next_token_type(token_iter, 'EQUAL')
+            assert_next_token_type(token_iter, )
+            # parse default property values
+        else:
+            raise Exception('Unexpected token {}'.format(token))
+
+
 def parse_function(token_iter):
     function = dict()
     modifiers = []
@@ -425,7 +446,7 @@ def parse_function(token_iter):
     tokens = []
 
     while True:
-         token_iter.next()
+        token_iter.next()
 
     function['name'] = assert_next_token_type(token_iter, 'ID').value
 
@@ -452,6 +473,7 @@ def parse_function(token_iter):
         function['parameters'].append(parameter)
 
     return function
+
 
 def parse_var(token_iter):
     vars = []
@@ -634,7 +656,7 @@ class UnrealFunctionParameter(dict):
 
 i = 0
 
-for root, dirs, files in os.walk('C:\Program Files (x86)\Steam\SteamApps\common\Red Orchestra'):
+for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour'):
     for file in files:
         if os.path.splitext(file)[1] != '.uc':
             continue
@@ -650,5 +672,5 @@ for root, dirs, files in os.walk('C:\Program Files (x86)\Steam\SteamApps\common\
 
         i = i + 1
 
-        if i > 100:
+        if i > 200:
             sys.exit(0)
