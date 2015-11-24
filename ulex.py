@@ -4,6 +4,7 @@ from ply import lex
 from ply.lex import LexError
 from more_itertools import peekable
 import sys
+import pprint
 
 
 class UnrealLexer(object):
@@ -80,7 +81,6 @@ class UnrealLexer(object):
         'input': 'INPUT',
         'localized': 'LOCALIZED',
         'native': 'NATIVE',
-        #'pointer': 'POINTER',
         'private': 'PRIVATE',
         'protected': 'PROTECTED',
         'transient': 'TRANSIENT',
@@ -94,6 +94,7 @@ class UnrealLexer(object):
         'assert': 'ASSERT',
         'auto': 'AUTO',
         'automated': 'AUTOMATED',
+        'begin': 'BEGIN',
         'bool': 'BOOL',
         'break': 'BREAK',
         'button': 'BUTTON',
@@ -110,6 +111,7 @@ class UnrealLexer(object):
         'editinlinenotify': 'EDITINLINENOTIFY',
         'editinlineuse': 'EDITINLINEUSE',
         'else': 'ELSE',
+        'end': 'END',
         'enum': 'ENUM',
         'enumcount': 'ENUMCOUNT',
         'event': 'EVENT',
@@ -147,7 +149,6 @@ class UnrealLexer(object):
         'operator': 'OPERATOR',
         'optional': 'OPTIONAL',
         'out': 'OUT',
-        #'pointer': 'POINTER',
         'postoperator': 'POSTOPERATOR',
         'preoperator': 'PREOPERATOR',
         'reliable': 'RELIABLE',
@@ -283,12 +284,12 @@ class UnrealLexer(object):
         r'"((\\{2})*|(.*?[^\\](\\{2})*))"'
         return t
 
-    def t_INTEGER(self, t):
-        r'\d+'
+    def t_FLOAT(self, t):
+        r'[-+]?\d*?[.]\d+'
         return t
 
-    def t_FLOAT(self, t):
-        r'\d+\.\d+'
+    def t_INTEGER(self, t):
+        r'\d+'
         return t
 
     def t_COMMENT(self, t):
@@ -296,7 +297,7 @@ class UnrealLexer(object):
 
     def t_ID(self, t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
-        t.type = self.reserved.get(t.value, 'ID')
+        t.type = self.reserved.get(t.value.lower(), 'ID')
         return t
 
     def t_newline(self, t):
@@ -310,19 +311,14 @@ class UnrealLexer(object):
         self.lexer.input(data)
 
         #print len(list(iter(lex.token, None)))
-        UnrealClass(peekable(iter(lex.token, None)))
-
-
-class UnrealPackage(object):
-    def __init__(self):
-        self.classes = dict()
+        return UnrealClass(peekable(iter(lex.token, None)))
 
 
 def assert_next_token_type(token_iter, type):
     token = token_iter.next()
 
     if token.type != type:
-        raise Exception('unexpected token \'{}\''.format(token.value))
+        raise Exception('Unexpected token \'{}\''.format(token.value))
 
     return token
 
@@ -372,7 +368,7 @@ def parse_type(token_iter):
     elif token.type == 'CLASS':
         token = token_iter.peek()
         template_parameters = None
-        if token.type == 'LANGLE': # template parameters are optional when deducing class types!
+        if token.type == 'LANGLE':  # template parameters are optional when deducing class types!
             template_parameters = parse_template_parameters(token_iter)
         return token.value, template_parameters
     elif token.type == 'ENUM':
@@ -381,11 +377,12 @@ def parse_type(token_iter):
         value = token.value
         token = token_iter.peek()
         template_parameters = None
-        if token.type == 'LANGLE': # template parameters are optional on types!
+        if token.type == 'LANGLE':  # template parameters are optional on types!
             template_parameters = parse_template_parameters(token_iter)
-        return value, template_parameters
+            return value, template_parameters
+        return value
     else:
-        raise Exception('Unexpected token {}'.format(token))
+        raise Exception('Malformed type (unexpected token {})'.format(token.type))
 
 
 def parse_enum(token_iter):
@@ -404,57 +401,78 @@ def parse_enum(token_iter):
     return name, values
 
 
-def parse_defaultproperties(token_iter):
-    assert_next_token_type(token_iter, 'DEFAULTPROPERTIES')
-    assert_next_token_type(token_iter, 'LCURLY')
+def parse_property(token_iter):
+    token = token_iter.next()
 
-    defaultproperties = dict()
-    key = ''
+    if token.type == 'LPAREN':
+        values = dict()
 
-    while True:
-        token = token_iter.read()
+        while True:
+            key = assert_next_token_type(token_iter, 'ID').value
 
-        if token.type == 'RCURLY':
-            break
-        elif token.type == 'ID':
-            key = token.value
-            assert_next_token_type(token_iter, 'EQUAL')
-            assert_next_token_type(token_iter, )
-            # parse default property values
-        else:
-            raise Exception('Unexpected token {}'.format(token))
+            # check for redundant data
+            if key in values.keys():
+                raise Exception('Redundant sub-object property ({})'.format(key))
+
+            assert_next_token_type(token_iter, 'ASSIGN')
+            value = parse_property(token_iter)
+
+            values[key] = value
+
+            token = token_iter.next()
+
+            if token.type == 'COMMA':
+                continue
+            elif token.type == 'RPAREN':
+                break
+            else:
+                raise Exception('Unexpected token {} (expected COMMA or RPAREN)'.format(token))
+
+        return values
+    else:
+        return token.value
 
 
-def parse_function(token_iter):
+def parse_function(token_iter, modifiers):
     function = dict()
-    modifiers = []
-
-    while True:
-        token = token_iter.next()
-
-        if token.type in UnrealLexer.function_modifers.values():
-            modifiers.append(token.value)
-        elif token.type == 'FUNCTION' or token.type == 'EVENT':
-            function['type'] = token.value
-            break
-        else:
-            raise Exception('Unexpected token {}'.format(token))
-
     function['modifiers'] = modifiers
 
+    token = token_iter.next()
+
+    if token.type == 'FUNCTION' or token.type == 'EVENT':
+        function['type'] = token.value
+    else:
+        raise Exception('Unexpected token {}'.format(token))
+
     # function return types can be absent...parsing this is going to be crazy
-    tokens = []
+    temp = parse_type(token_iter)
 
-    while True:
-        token_iter.next()
+    # if next token is not an LPAREN, previous one was a return type and next is the function name
+    token = token_iter.peek()
 
-    function['name'] = assert_next_token_type(token_iter, 'ID').value
+    if token.type == 'LPAREN':
+        print type(temp)
+        if not isinstance(temp, str):
+            raise Exception('missing function name')
+        function['name'] = temp
+        # previous token was not a type, ensure
+    elif token.type == 'ID':
+        function['return-type'] = temp
+        function['name'] = assert_next_token_type(token_iter, 'ID').value
+    else:
+        raise Exception('unexpected token {} (expected LPAREN or ID)'.format(token))
 
     assert_next_token_type(token_iter, 'LPAREN')
 
     function['parameters'] = []
 
     while True:
+        token = token_iter.peek()
+
+        if token.type == 'RPAREN':
+            token_iter.next()
+            break
+
         parameter = dict()
         parameter['modifiers'] = []
 
@@ -472,83 +490,230 @@ def parse_function(token_iter):
 
         function['parameters'].append(parameter)
 
+    # TODO: parse local variables types
+
+    # parse everything until a matching brace is found
+    assert_next_token_type(token_iter, 'LCURLY')
+
+    i = 0
+
+    while True:
+        token = token_iter.next()
+
+        if token.type == 'LCURLY':
+            i = i + 1
+        elif token.type == 'RCURLY':
+            i = i - 1
+            if i < 0:
+                break
+
     return function
 
 
-def parse_var(token_iter):
-    vars = []
-
-    assert_next_token_type(token_iter, 'VAR')
-
-    token = token_iter.peek()
-
-    # group (optional)
-    if token.type == 'LPAREN':
-        token_iter.next()  # consume LPAREN
-        token = token_iter.peek()
-
-        if token.type == 'ID':
-            # group name
-            token = token_iter.next()
-            assert_next_token_type(token_iter, 'RPAREN')
-            pass
-        elif token.type == 'RPAREN':
-            token = token_iter.next()  # consume RPAREN
-            pass
-
-    modifiers = []
-
-    # modifiers
-    while True:
-        token = token_iter.peek()
-
-        if token is None or token.value not in UnrealLexer.variable_modifiers.keys():
-            break
-
-        modifiers.append(token.value)
-
-        token = token_iter.next()
-
-        #print token.value
-
-    # type
-    var = dict()
-    var['type'] = parse_type(token_iter)
-
-    # name(s)
-    while True:
-        var['modifiers'] = modifiers
-        var['name'] = assert_next_token_type(token_iter, 'ID').value
-
-        # array length (optional)
-        token = token_iter.peek()
-
-        if token.type == 'LSQUARE':
-            token_iter.next()  # consume LSQUARE
-            var['length'] = assert_next_token_type(token_iter, 'INTEGER').value
-            assert_next_token_type(token_iter, 'RSQUARE')
-
-        token = token_iter.next()
-
-        if token.type == 'COMMA':
-            vars.append(var)
-            continue
-        elif token.type == 'SEMICOLON':
-            vars.append(var)
-            break
-        else:
-            raise Exception('Unexpected token {}'.format(token))
-
-    return var
-
-
 class UnrealClass(dict):
+
+    def parse_defaultproperties(self, token_iter):
+        assert_next_token_type(token_iter, 'DEFAULTPROPERTIES')
+        assert_next_token_type(token_iter, 'LCURLY')
+
+        objects = dict()
+        key = ''
+
+        while True:
+            token = token_iter.next()
+
+            if token.type == 'RCURLY':
+                break
+            elif token.type == 'BEGIN':
+                token = assert_next_token_type(token_iter, 'ID')
+
+                if token.value != 'Object':  # object should be treated as a reserved word
+                    raise Exception('unexpected')
+
+                assert_next_token_type(token_iter, 'CLASS')
+                assert_next_token_type(token_iter, 'ASSIGN')
+                classname = assert_next_token_type(token_iter, 'ID').value
+                assert_next_token_type(token_iter, 'NAME')
+                assert_next_token_type(token_iter, 'ASSIGN')
+                name = assert_next_token_type(token_iter, 'ID').value
+
+                while True:
+                    token = token_iter.next()
+
+                    if token.type == 'END':
+                        token = assert_next_token_type(token_iter, 'ID')
+
+                        if token.value.upper() != 'OBJECT':
+                            raise Exception('Unexpected token {} (expected \'OBJECT\''.format(token))
+
+                        break
+                    if token.type == 'ID':
+                        key = token.value
+
+                        token = token_iter.peek()
+
+                        if token.type == 'LPAREN':
+                            # array index indicator
+                            token_iter.next()   # consume lparen
+
+                            token = token_iter.next()
+
+                            if token.type != 'INTEGER':
+                                raise Exception('Unexpected token (expected integer)')
+
+                            assert_next_token_type(token_iter, 'RPAREN')
+
+                        assert_next_token_type(token_iter, 'ASSIGN')
+
+                        value = parse_property(token_iter)
+            elif token.type == 'ID':
+                key = token.value
+
+                token = token_iter.peek()
+
+                if token.type == 'LPAREN':
+                    # array index indicator
+                    token_iter.next()   # consume lparen
+
+                    token = token_iter.next()
+
+                    if token.type != 'INTEGER':
+                        raise Exception('Unexpected token (expected integer)')
+
+                    assert_next_token_type(token_iter, 'RPAREN')
+
+                assert_next_token_type(token_iter, 'ASSIGN')
+
+                value = parse_property(token_iter)
+
+                self.defaultproperties[key] = value
+            else:
+                raise Exception('Unexpected token {}'.format(token))
+
+    def parse_var(self, token_iter):
+        assert_next_token_type(token_iter, 'VAR')
+
+        token = token_iter.peek()
+
+        # group (optional)
+        if token.type == 'LPAREN':
+            token_iter.next()  # consume LPAREN
+            token = token_iter.peek()
+
+            if token.type == 'ID':
+                # group name
+                token = token_iter.next()
+                assert_next_token_type(token_iter, 'RPAREN')
+                pass
+            elif token.type == 'RPAREN':
+                token = token_iter.next()  # consume RPAREN
+                pass
+
+        modifiers = []
+
+        # modifiers
+        while True:
+            token = token_iter.peek()
+
+            if token is None or token.value not in UnrealLexer.variable_modifiers.keys():
+                break
+
+            modifiers.append(token.value)
+
+            token = token_iter.next()
+
+            #print token.value
+
+        # type
+        var = dict()
+        var['type'] = parse_type(token_iter)
+
+        # name(s)
+        while True:
+            var['modifiers'] = modifiers
+            var['name'] = assert_next_token_type(token_iter, 'ID').value
+
+            # array length (optional)
+            token = token_iter.peek()
+
+            if token.type == 'LSQUARE':
+                token_iter.next()  # consume LSQUARE
+
+                token = token_iter.peek()
+
+                if token.type == 'ID':
+                    token_iter.next()
+                    # look-up constant value
+                    if token.value in self.constants.keys():
+                        var['length'] = self.constants[token.value]
+                    else:
+                        raise Exception('Array length for variable {} does not name a known constant'.format(token.value))
+                elif token.type == 'INTEGER':
+                    var['length'] = assert_next_token_type(token_iter, 'INTEGER').value
+
+                assert_next_token_type(token_iter, 'RSQUARE')
+
+            token = token_iter.next()
+
+            if token.type == 'COMMA':
+                self.variables[var['name']] = var
+                continue
+            elif token.type == 'SEMICOLON':
+                self.variables[var['name']] = var
+                break
+            else:
+                raise Exception('Unexpected token {}'.format(token))
+
+    def parse_const(self, token_iter):
+        assert_next_token_type(token_iter, 'CONST')
+        name = assert_next_token_type(token_iter, 'ID').value
+        assert_next_token_type(token_iter, 'ASSIGN')
+        value = token_iter.next().value
+        assert_next_token_type(token_iter, 'SEMICOLON')
+        self.constants[name] = value
+
+    def parse_state(self, token_iter, modifiers):
+        assert_next_token_type(token_iter, 'STATE')
+
+        token = token_iter.peek()
+
+        if token.type == 'LPAREN':
+            token_iter.next()  # consume LPAREN
+            assert_next_token_type(token_iter, 'RPAREN')
+
+        name = assert_next_token_type(token_iter, 'ID').value
+
+        token = token_iter.peek()
+
+        if token.type == 'EXTENDS':
+            token_iter.next()  # consume EXTENDS
+            superclass = assert_next_token_type(token_iter, 'ID').value
+
+        assert_next_token_type(token_iter, 'LCURLY')
+
+        # iterate until matching curly is found
+        i = 0
+
+        while True:
+            token = token_iter.next()
+
+            if token.type == 'LCURLY':
+                i = i + 1
+            elif token.type == 'RCURLY':
+                i = i - 1
+                if i < 0:
+                    break
+
+        print name
+
     def __init__(self, token_iter):
         self.super = None
         self.enums = dict()
         self.structs = dict()
         self.variables = dict()
         self.functions = dict()
+        self.constants = dict()
+        self.defaultproperties = dict()
 
         assert_next_token_type(token_iter, 'CLASS')
 
@@ -592,6 +757,8 @@ class UnrealClass(dict):
             else:
                 self[token.value] = True
 
+        modifiers = []
+
         while True:
             try:
                 token = token_iter.peek()
@@ -599,60 +766,35 @@ class UnrealClass(dict):
                 return
 
             if token.type == 'VAR':
-                print parse_var(token_iter)
+                self.parse_var(token_iter)
             elif token.type in UnrealLexer.function_modifers.values():
-                print parse_function(token_iter)
+                modifiers = []
+                while True:
+                    token = token_iter.peek()
+                    if token.type in UnrealLexer.function_modifers.values():
+                        modifiers.append(token.value)
+                        token_iter.next()
+                    elif token.type == 'FUNCTION' or token.type == 'EVENT':
+                        parse_function(token_iter, modifiers)  # make member of class
+                        break
+                    elif token.type == 'STATE':
+                        self.parse_state(token_iter, modifiers)
+                    else:
+                        raise Exception('Unexpected token {}'.format(token))
+                    modifiers.append(token.value)
+            elif token.type == 'FUNCTION' or token.type == 'EVENT':
+                parse_function(token_iter, [])
+            elif token.type == 'STATE':
+                self.parse_state(token_iter, [])
+            elif token.type == 'DEFAULTPROPERTIES':
+                self.parse_defaultproperties(token_iter)
+            elif token.type == 'CONST':
+                self.parse_const(token_iter)
             else:
                 print token.type
                 break
 
-
-class UnrealEnum(dict):
-    def __init__(self):
-        pass
-
-
-class UnrealStruct(dict):
-    def __init__(self):
-        self.variables = []
-
-
-class UnrealVariable(dict):
-    def __init__(self):
-        self.type = None
-        self.name = ''
-        self.access = 'public'
-
-
-class UnrealLocal(dict):
-    def __init__(self):
-        pass
-
-
-class UnrealFunction(dict):
-    def __init__(self):
-        self.name = ''
-        self.acess = 'public'
-        self.return_type = None
-        self.static = False
-        self.parameters = []
-        self.simulated = False
-        self.final = False
-        self.iterator = False
-        self.latent = False
-        self.native = False
-        self.singular = False
-        self.exec_ = False
-
-
-class UnrealFunctionParameter(dict):
-    def __init__(self):
-        self.type = None
-        self.name = None
-        self.optional = False
-        self.out = False
-        self.coerce = False
-        self.skip = False
+        pprint.pprint(self.defaultproperties)
 
 i = 0
 
@@ -672,5 +814,5 @@ for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour'):
 
         i = i + 1
 
-        if i > 200:
+        if i > 50:
             sys.exit(0)
