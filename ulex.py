@@ -779,8 +779,9 @@ class UnrealClass(dict):
                         break
                     elif token.type == 'STATE':
                         self.parse_state(token_iter, modifiers)
+                        break
                     else:
-                        raise Exception('Unexpected token {}'.format(token))
+                        raise Exception('Unexpected token heh {}'.format(token))
                     modifiers.append(token.value)
             elif token.type == 'FUNCTION' or token.type == 'EVENT':
                 parse_function(token_iter, [])
@@ -814,5 +815,5 @@ for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour'):
 
         i = i + 1
 
-        if i > 50:
+        if i > 200:
             sys.exit(0)
