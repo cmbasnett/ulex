@@ -5,6 +5,7 @@ from ply.lex import LexError
 from more_itertools import peekable
 import sys
 import pprint
+import traceback
 
 
 class UnrealLexer(object):
@@ -330,12 +331,17 @@ class UnrealLexer(object):
         #print len(list(iter(lex.token, None)))
         return UnrealClass(peekable(iter(lex.token, None)))
 
+def assert_token_type(token, types):
+    if token.type not in types:
+        raise Exception('Unexpected token \'{}\' (expected {})'.format(token.value, ', '.join(types)))
+
 
 def assert_next_token_type(token_iter, types):
     token = token_iter.next()
 
     if token.type not in types:
-        raise Exception('Unexpected token \'{}\' (expected {})'.format(token.value, ', '.join(types)))
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        raise Exception('Unexpected token \'{}\' ({}) (expected {})'.format(token.value, token.type, ', '.join(types)))
 
     return token
 
@@ -421,7 +427,7 @@ class UnrealClass(dict):
             superstruct = assert_next_token_type(token_iter, ['ID']).value
 
         while True:
-            token_iter.peek()
+            token = token_iter.peek()
 
             if token.type == 'RCURLY':
                 token_iter.next()
@@ -569,55 +575,65 @@ class UnrealClass(dict):
 
         return token.value
 
-    def parse_property(self, token_iter):
-        token = token_iter.peek()
+    # the LPAREN should already be consumed by the time we get in here
+    def parse_subobject(self, token_iter):
+        # TODO: determine type of sub-object (dict, list)
+        subobject = None
 
-        if token.type == 'LPAREN':
-            # properties can be dictionaries or lists, account for one or the other!
-            values = None
-
-            while True:
-                if values is None:
-                    token = assert_peek_token_type(token_iter, 'ID', 'COMMA', 'RPAREN', 'LPAREN'])
-
-                    if token.type == 'ID':
-                        values = dict()
-                    elif token.type in ['COMMA', 'LPAREN']:
-                        values = list()
-                    elif token.type == 'RPAREN':
-                        break
-
+        while True:
+            key = None
+            if subobject is None:
+                token = assert_next_token_type(token_iter, ['ID', 'COMMA', 'LPAREN', 'RPAREN'])
                 if token.type == 'ID':
                     key = token.value
-                    token = token_iter.peek()
-
-                    if token.type == 'LSQUARE':
-                        token_iter.next()  # consume LSQUARE
-                        key = key, self.parse_integral_constant(token_iter)  # key becomes name, constant
-
-                        assert_next_token_type(token_iter, ['RSQUARE'])
-
-                    # check for redundant data
-                    if key in values.keys():
-                        raise Exception('Redundant sub-object property ({})'.format(key))
-
-                    assert_next_token_type(token_iter, ['ASSIGN'])
-                    value = self.parse_property(token_iter)
-
-                    values[key] = value
+                    subobject = dict()
                 elif token.type == 'COMMA':
-                    values.append(None)
-                    continue
+                    subobject = list()
+                    subobject.append(None)
                 elif token.type == 'LPAREN':
-                    value.append(parse_property(token_iter))
-                    break
+                    subobject = list()
+                    subobject.append(self.parse_subobject(token_iter))
                 elif token.type == 'RPAREN':
-                    break
+                    return None
 
-            return values
-        else:
-            # TODO: account for external type references (eg. Type.Member)
-            return token.value
+            if isinstance(subobject, dict):
+                if key is None:
+                    key = assert_next_token_type(token_iter, ['ID']).value
+
+                if key in subobject.keys():
+                    raise Exception('Redundant sub-object property ({})'.format(key))
+
+                token = assert_next_token_type(token_iter, ['LSQUARE', 'LPAREN', 'ASSIGN'])
+
+                if token.type == 'LSQUARE':
+                    key = key, self.parse_integral_constant(token_iter)
+                    assert_next_token_type(token_iter, ['RSQUARE'])
+                    assert_next_token_type(token_iter, ['ASSIGN'])
+
+                token = assert_next_token_type(token_iter, ['LPAREN', 'RPAREN', 'USTRING', 'INTEGER', 'FLOAT', 'REFERENCE', 'NAME', 'TRUE', 'FALSE', 'NONE', 'ID'])
+
+                if token.type == 'LPAREN':
+                    value = self.parse_subobject(token_iter)
+                elif token.type == 'RPAREN':
+                    return subobject
+                else:
+                    value = token.value
+
+                subobject[key] = value
+                token = assert_next_token_type(token_iter, ['COMMA', 'RPAREN'])
+                if token.type == 'RPAREN':
+                    return subobject
+            elif isinstance(subobject, list):
+                token = assert_next_token_type(token_iter, ['LPAREN', 'RPAREN', 'COMMA', 'ID', 'USTRING', 'INTEGER', 'FLOAT', 'REFERENCE', 'NAME', 'TRUE', 'FALSE', 'NONE'])
+
+                if token.type == 'LPAREN':
+                    subobject.append(self.parse_subobject(token_iter))
+                elif token.type == 'COMMA':
+                    pass
+                elif token.type == 'RPAREN':
+                    return subobject
+                else:
+                    subobject.append(token.value)
 
     def parse_defaultproperties(self, token_iter):
         assert_next_token_type(token_iter, ['DEFAULTPROPERTIES'])
@@ -627,7 +643,7 @@ class UnrealClass(dict):
         key = ''
 
         while True:
-            token = token_iter.next()
+            token = assert_next_token_type(token_iter, ['RCURLY', 'SEMICOLON', 'BEGIN', 'ID'])
 
             if token.type == 'RCURLY':
                 break
@@ -666,8 +682,14 @@ class UnrealClass(dict):
                             self.parse_integral_constant(token_iter)
 
                             assert_next_token_type(token_iter, ['RPAREN', 'RSQUARE'])
+                            assert_next_token_type(token_iter, ['ASSIGN'])
 
-                        value = self.parse_property(token_iter)
+                        token = assert_next_token_type(token_iter, ['LPAREN', 'ID', 'USTRING', 'INTEGER', 'FLOAT', 'REFERENCE', 'NAME', 'TRUE', 'FALSE', 'NONE'])
+
+                        if token.type == 'LPAREN':
+                            value = self.parse_subobject(token_iter)
+                        else:
+                            value = token.value
             elif token.type == 'ID':
                 key = token.value
 
@@ -680,11 +702,14 @@ class UnrealClass(dict):
                     assert_next_token_type(token_iter, ['RPAREN', 'RSQUARE'])
                     assert_next_token_type(token_iter, ['ASSIGN'])
 
-                value = self.parse_property(token_iter)
+                token = assert_next_token_type(token_iter, ['LPAREN', 'ID', 'USTRING', 'INTEGER', 'FLOAT', 'REFERENCE', 'NAME', 'TRUE', 'FALSE', 'NONE'])
+
+                if token.type == 'LPAREN':
+                    value = self.parse_subobject(token_iter)
+                else:
+                    value = token.value
 
                 self.defaultproperties[key] = value
-            else:
-                raise Exception('Unexpected token {}'.format(token))
 
     def parse_var(self, token_iter):
         assert_next_token_type(token_iter, ['VAR'])
