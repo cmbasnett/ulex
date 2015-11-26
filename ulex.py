@@ -4,8 +4,6 @@ from ply import lex
 from ply.lex import LexError
 from more_itertools import peekable
 import sys
-import pprint
-import traceback
 
 
 class UnrealLexer(object):
@@ -142,7 +140,7 @@ class UnrealLexer(object):
         'import': 'IMPORT',
         'init': 'INIT',
         'input': 'INPUT',
-        'insert': 'INSERT',
+        #'insert': 'INSERT',
         'int': 'INT',
         'intrinsic': 'INTRINSIC',
         'invariant': 'INVARIANT',
@@ -161,7 +159,7 @@ class UnrealLexer(object):
         'postoperator': 'POSTOPERATOR',
         'preoperator': 'PREOPERATOR',
         'reliable': 'RELIABLE',
-        'remove': 'REMOVE',
+        #'remove': 'REMOVE',
         'replication': 'REPLICATION',
         'return': 'RETURN',
         'rng': 'RNG',
@@ -331,6 +329,7 @@ class UnrealLexer(object):
         #print len(list(iter(lex.token, None)))
         return UnrealClass(peekable(iter(lex.token, None)))
 
+
 def assert_token_type(token, types):
     if token.type not in types:
         raise Exception('Unexpected token \'{}\' (expected {})'.format(token.value, ', '.join(types)))
@@ -355,17 +354,17 @@ def assert_peek_token_type(token_iter, types):
     return token
 
 
-def parse_template_parameters(token_iter, max = 0):
+def parse_template_parameters(token_iter, max=0):
     arguments = []
 
     assert_next_token_type(token_iter, ['LANGLE'])
 
     while True:
-        token = token_iter.next()
+        token = assert_next_token_type(token_iter, ['ARRAY', 'ID', 'COMMA', 'RANGLE'] + UnrealLexer.primitive_types.values())
 
         if token.type == 'ARRAY':
             parse_template_parameters(token_iter)
-        elif token.type == 'ID':
+        elif token.type == 'ID' or token.type in UnrealLexer.primitive_types.values():
             arguments.append(token.value)
         elif token.type == 'COMMA':
             continue
@@ -411,6 +410,8 @@ class UnrealClass(dict):
         return name, values
 
     def parse_struct(self, token_iter):
+        struct = dict()
+        struct['vars'] = dict()
         name = ''
         modifiers = []
         while True:
@@ -424,7 +425,7 @@ class UnrealClass(dict):
         token = assert_next_token_type(token_iter, ['EXTENDS', 'LCURLY'])
 
         if token.type == 'EXTENDS':
-            superstruct = assert_next_token_type(token_iter, ['ID']).value
+            struct['super'] = assert_next_token_type(token_iter, ['ID']).value
 
         while True:
             token = token_iter.peek()
@@ -433,7 +434,10 @@ class UnrealClass(dict):
                 token_iter.next()
                 break
             else:
-                self.parse_var(token_iter)
+                var = self.parse_var(token_iter)
+                struct['vars'][var['name']] = var
+
+        print struct
 
     def parse_local(self, token_iter):
         pass
@@ -553,6 +557,7 @@ class UnrealClass(dict):
             template_parameters = None
             if token.type == 'LANGLE':  # template parameters are optional on types!
                 template_parameters = parse_template_parameters(token_iter)
+                print value, template_parameters
                 return value, template_parameters
             elif token.type == 'PERIOD':
                 token_iter.next().value
@@ -782,6 +787,7 @@ class UnrealClass(dict):
         self.constants[name] = value
 
     def parse_state(self, token_iter, modifiers):
+        state = dict()
         assert_next_token_type(token_iter, ['STATE'])
 
         token = token_iter.peek()
@@ -796,7 +802,7 @@ class UnrealClass(dict):
 
         if token.type == 'EXTENDS':
             token_iter.next()  # consume EXTENDS
-            superclass = assert_next_token_type(token_iter, ['ID']).value
+            state['superclass'] = assert_next_token_type(token_iter, ['ID']).value
 
         assert_next_token_type(token_iter, ['LCURLY'])
 
@@ -812,6 +818,7 @@ class UnrealClass(dict):
                 i = i - 1
                 if i < 0:
                     break
+        self.states[name] = state
 
     def __init__(self, token_iter):
         self.super = None
@@ -900,21 +907,11 @@ class UnrealClass(dict):
             else:
                 break
 
-i = 0
+for root, dirs, files in os.walk('C:\Users\Colin\Documents\darkesthour\UTCore'):
+    classes = files
 
-# with open('C:\Program Files (x86)\Steam\SteamApps\common\Red Orchestra\AHZ_ROVehicles\Classes\ATGun.uc') as f:
-#     content = f.read()
-#     lexer = UnrealLexer()
-#     try:
-#         lexer.input(content)
-#     except LexError as e:
-#         print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
-#     except Exception as e:
-#         print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
+    print [os.path.splitext(x)[0] for x in files]
 
-# sys.exit(0)
-
-for root, dirs, files in os.walk('C:\Program Files (x86)\Steam\SteamApps\common\Red Orchestra'):
     for file in files:
         if os.path.splitext(file)[1] != '.uc':
             continue
@@ -927,8 +924,3 @@ for root, dirs, files in os.walk('C:\Program Files (x86)\Steam\SteamApps\common\
                 print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
             except Exception as e:
                 print 'Error: {} ({}, {})'.format(e, file, lexer.lexer.lineno)
-
-        i = i + 1
-
-        if i > 1600:
-            sys.exit(0)
