@@ -334,6 +334,7 @@ def p_function_arguments_or_empty(p):
 def p_local_declaration(p):
     'local_declaration : LOCAL type var_names SEMICOLON'
     p[0] = ('local-declaration', (p[2], p[3]))
+    print p[0]
 
 
 def p_local_declarations_1(p):
@@ -424,13 +425,18 @@ def p_local_declarations_or_empty(p):
 
 
 def p_function_body(p):
-    'function_body : local_declarations_or_empty expressions'
+    'function_body : local_declarations_or_empty statements_or_empty'
     p[0] = ('function-body', (p[1], p[2]))
 
 
 def p_expression(p):
     '''expression : constexpr'''
-    print p[1]
+    p[0] = p[1]
+
+
+def p_expression_or_empty(p):
+    '''expression_or_empty : expression
+                           | empty'''
     p[0] = p[1]
 
 
@@ -444,8 +450,33 @@ def p_expressions_2(p):
     p[0] = p[1] + [p[2]]
 
 
+def p_statement(p):
+    '''statement : return_statement
+                 | for_block
+                 | while_block
+                 | break_statement
+                 | continue_statement'''
+    p[0] = p[1]
+
+
+def p_statements_1(p):
+    'statements : statement'
+    p[0] = [p[1]]
+
+
+def p_statements_2(p):
+    'statements : statements statement'
+    p[0] = p[1] + [p[2]]
+
+
+def p_statements_or_empty(p):
+    '''statements_or_empty : statements
+                           | empty'''
+    p[0] = p[1]
+
+
 def p_return_statement(p):
-    'return_statement : RETURN expression'
+    'return_statement : RETURN expression_or_empty SEMICOLON'
     p[0] = ('return-statement', p[2])
 
 
@@ -455,18 +486,29 @@ def p_start(p):
     p[0] = p[1]
 
 
+def p_break_statement(p):
+    'break_statement : BREAK SEMICOLON'
+    p[0] = ('break_statement')
+
+
+def p_continue_statement(p):
+    'continue_statement : CONTINUE SEMICOLON'
+    p[0] = ('continue-statement')
+
+
 def p_error(p):
     print p
     pass
 
 
 def p_for_block(p):
-    '''for_block : FOR LPAREN assignments_or_empty SEMICOLON expression_or_empty SEMICOLON expression_or_empty RPAREN LCURLY statements_or_empty RCURLY'''
+    '''for_block : FOR LPAREN expression_or_empty SEMICOLON expression_or_empty SEMICOLON expression_or_empty RPAREN LCURLY expression_or_empty RCURLY'''
     p[0] = ('for-block', (p[3], p[5], p[7]))
 
+
 def p_while_block(p):
-    '''while_block : WHILE LPAREN expression_or_empty RPAREN'''
-    p[0] = ('while-block', ())
+    'while_block : WHILE LPAREN expression_or_empty RPAREN'
+    p[0] = ('while-block', (p[3]))
 
 
 parser = yacc.yacc()
