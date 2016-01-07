@@ -142,7 +142,6 @@ reserved = {
     'invariant': 'INVARIANT',
     'iterator': 'ITERATOR',
     'latent': 'LATENT',
-    'length': 'LENGTH',
     'local': 'LOCAL',
     'localized': 'LOCALIZED',
     'name': 'NAME',
@@ -232,6 +231,8 @@ tokens = [
     'XOR',
     'BITWISE_NOT',
     'ID',
+    'LEQUAL',
+    'GEQUAL'
     ] + list(reserved.values())
 
 t_LPAREN = r'\('
@@ -270,6 +271,8 @@ t_LEFT_SHIFT = r'<<'
 t_RIGHT_SHIFT = r'>>'
 t_XOR = r'\^'
 t_BITWISE_NOT = r'~'
+t_LEQUAL = r'<='
+t_GEQUAL = r'>='
 
 
 def t_DIRECTIVE(t):
@@ -322,7 +325,7 @@ def t_ID(t):
 
 def t_newline(t):
     r'\n+'
-    #t.lexer.lineno += len(t.value)
+    t.lexer.lineno += len(t.value)
 
 
 def t_error(t):

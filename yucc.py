@@ -1,9 +1,123 @@
 from ply import yacc
-from lux import tokens
+from lux import tokens, lexer
 import os
 
 constants = dict()
 start = 'start'
+
+
+def p_unary_operator(p):
+    '''unary_operator : MINUS
+                      | NOT
+                      | INCREMENT
+                      | BITWISE_NOT'''
+    p[0] = p[1]
+
+
+def p_unary_operation(p):
+    'unary_operation : unary_operator expression'
+    p[0] = ('unary-operation' (p[1], p[2]))
+
+
+def p_binary_operator(p):
+    '''binary_operator : EQUAL
+                       | NEQUAL
+                       | LEQUAL
+                       | GEQUAL
+                       | MULTIPLY
+                       | DIVIDE
+                       | ADD
+                       | MINUS
+                       | LANGLE
+                       | RANGLE'''
+    p[0] = p[1]
+
+
+def p_binary_operation(p):
+    'binary_operation : expression binary_operator expression'
+    p[0] = ('binary-operation', (p[2], p[1], p[3]))
+
+
+def p_identifier(p):
+    '''identifier : ID'''
+    p[0] = p[1]
+
+
+def p_atom(p):
+    '''atom : identifier
+            | literal'''
+    p[0] = p[1]
+
+
+def p_subscription(p):
+    'subscription : primary LSQUARE expression RSQUARE'
+    p[0] = ('subscription', (p[1], p[2]))
+
+
+def p_primary(p):
+    '''primary : atom
+               | attribute
+               | subscription
+               | call
+               | unary_operation
+               | binary_operation'''
+    p[0] = p[1]
+
+
+def p_argument_list_1(p):
+    'argument_list : expression'
+    p[0] = [p[1]]
+
+
+def p_argument_list_2(p):
+    'argument_list : argument_list COMMA expression'
+    p[0] = p[1] + [p[2]]
+
+
+def p_argument_list_or_empty(p):
+    '''argument_list_or_empty : argument_list
+                              | empty'''
+    p[0] = p[1]
+
+
+def p_call(p):
+    '''call : primary LPAREN argument_list_or_empty RPAREN'''
+    p[0] = ('call', (p[1], p[3]))
+
+
+def p_attribute(p):
+    '''attribute : primary PERIOD identifier'''
+    p[0] = ('attribute', (p[1], p[3]))
+
+
+def p_target(p):
+    '''target : identifier
+              | attribute'''
+    p[0] = p[1]
+
+
+def p_assignment_statement(p):
+    'assignment_statement : target ASSIGN expression'
+    print ('assignment-statement', (p[1], p[3]))
+    p[0] = ('assignment-statement', (p[1], p[3]))
+
+
+def p_string_literal(p):
+    'string_literal : USTRING'
+    p[0] = p[1]
+
+
+def p_boolean_literal(p):
+    '''boolean_literal : FALSE
+                       | TRUE'''
+    p[0] = p[1]
+
+
+def p_literal(p):
+    '''literal : string_literal
+               | number
+               | boolean_literal'''
+    p[0] = p[1]
 
 
 def error(p, s):
@@ -38,7 +152,7 @@ def p_var_names_2(p):
 
 
 def p_var_name(p):
-    'var_name : ID arrayindex_or_empty'
+    'var_name : identifier arrayindex_or_empty'
     p[0] = p[1], p[2]
 
 
@@ -90,7 +204,7 @@ def p_var_declaration(p):
 
 
 def p_generic_type(p):
-    'generic_type : ID LANGLE type_list RANGLE'
+    'generic_type : identifier LANGLE type_list RANGLE'
     p[0] = p[1], p[3]
 
 
@@ -115,7 +229,7 @@ def p_type(p):
     '''type : primitive_type
             | array
             | generic_type
-            | ID'''
+            | identifier'''
     p[0] = p[1]
 
 
@@ -126,12 +240,12 @@ def p_type_or_empty(p):
 
 
 def p_id_list_1(p):
-    'id_list : ID'
+    'id_list : identifier'
     p[0] = [p[1]]
 
 
 def p_id_list_2(p):
-    'id_list : id_list COMMA ID'
+    'id_list : id_list COMMA identifier'
     p[0] = p[1] + [p[3]]
 
 
@@ -146,7 +260,7 @@ def p_type_list_2(p):
 
 
 def p_id_or_empty(p):
-    '''id_or_empty : ID
+    '''id_or_empty : identifier
                    | empty'''
     p[0] = p[1]
 
@@ -207,12 +321,12 @@ def p_class_modifiers_or_empty(p):
 
 
 def p_within(p):
-    'within : WITHIN ID'
+    'within : WITHIN identifier'
     p[0] = p[1], p[2]
 
 
 def p_dependson(p):
-    'dependson : DEPENDSON LPAREN ID RPAREN'
+    'dependson : DEPENDSON LPAREN identifier RPAREN'
     p[0] = p[1], p[3]
     p[0] = p[1]
 
@@ -224,18 +338,10 @@ def p_number(p):
 
 
 def p_const_declaration(p):
-    'const_declaration : CONST ID ASSIGN constexpr SEMICOLON'
+    'const_declaration : CONST identifier ASSIGN literal SEMICOLON'
     global constants
     #constants[p[2]] = p[4]
     p[0] = ('const-declaration' (p[2], p[4]))
-
-
-def p_constexpr(p):
-    '''constexpr : number
-                 | USTRING
-                 | TRUE
-                 | FALSE'''
-    p[0] = p[1]
 
 
 def p_extends_1(p):
@@ -243,12 +349,12 @@ def p_extends_1(p):
 
 
 def p_extends_2(p):
-    'extends : EXTENDS ID'
+    'extends : EXTENDS identifier'
     p[0] = p[2]
 
 
 def p_class_declaration(p):
-    'class_declaration : CLASS ID extends class_modifiers_or_empty SEMICOLON'
+    'class_declaration : CLASS identifier extends class_modifiers_or_empty SEMICOLON'
     if p[2] == p[3]:
         error(p, 'Classes cannot extend themselves.')
         raise SyntaxError
@@ -257,7 +363,7 @@ def p_class_declaration(p):
 
 
 def p_struct_declaration(p):
-    '''struct_declaration : STRUCT ID extends LCURLY RCURLY'''
+    '''struct_declaration : STRUCT identifier extends LCURLY RCURLY'''
     p[0] = p[2], p[3]
 
 
@@ -311,7 +417,7 @@ def p_function_argument_modifier_or_empty(p):
 
 
 def p_function_argument(p):
-    '''function_argument : function_argument_modifier_or_empty type ID'''
+    '''function_argument : function_argument_modifier_or_empty type identifier'''
     p[0] = p[3], p[2], p[1]
 
 
@@ -348,8 +454,8 @@ def p_local_declarations_2(p):
 
 
 def p_function_declaration(p):
-    '''function_declaration : function_modifiers_or_empty function_type type ID LPAREN function_arguments_or_empty RPAREN
-                            | function_modifiers_or_empty function_type ID LPAREN function_arguments_or_empty RPAREN'''
+    '''function_declaration : function_modifiers_or_empty function_type type identifier LPAREN function_arguments_or_empty RPAREN
+                            | function_modifiers_or_empty function_type identifier LPAREN function_arguments_or_empty RPAREN'''
     if len(p) == 8:  # return type
         p[0] = ('function-declaration', (p[4], p[3], p[2], p[1], p[6]))
     else:            # no return type
@@ -388,7 +494,7 @@ def p_declarations_2(p):
 
 
 def p_defaultproperties_assignment_value(p):
-    '''defaultproperties_assignment_value : constexpr'''
+    '''defaultproperties_assignment_value : literal'''
     p[0] = p[1]
 
 
@@ -430,7 +536,7 @@ def p_function_body(p):
 
 
 def p_expression(p):
-    '''expression : constexpr'''
+    '''expression : primary'''
     p[0] = p[1]
 
 
@@ -440,23 +546,61 @@ def p_expression_or_empty(p):
     p[0] = p[1]
 
 
-def p_expressions_1(p):
-    'expressions : expression'
+def p_simple_statement(p):
+    '''simple_statement : return_statement
+                        | break_statement
+                        | continue_statement
+                        | assignment_statement'''
+    p[0] = p[1]
+
+
+def p_simple_statement_list_1(p):
+    'simple_statement_list : simple_statement'
     p[0] = [p[1]]
 
 
-def p_expressions_2(p):
-    'expressions : expressions expression'
+def p_simple_statement_list_2(p):
+    'simple_statement_list : simple_statement_list COMMA simple_statement'
     p[0] = p[1] + [p[2]]
 
 
-def p_statement(p):
-    '''statement : return_statement
-                 | for_block
-                 | while_block
-                 | break_statement
-                 | continue_statement'''
+def p_simple_statement_list_or_empty(p):
+    '''simple_statement_list_or_empty : simple_statement_list
+                                      | empty'''
     p[0] = p[1]
+
+
+def p_return_statement(p):
+    'return_statement : RETURN expression_or_empty'
+    p[0] = ('return-statement', p[2])
+
+
+def p_start(p):
+    'start : class_declaration declarations'
+    print p[1]
+    p[0] = p[1]
+
+
+def p_break_statement(p):
+    'break_statement : BREAK'
+    p[0] = ('break_statement')
+
+
+def p_continue_statement(p):
+    'continue_statement : CONTINUE'
+    p[0] = ('continue-statement')
+
+
+def p_error(p):
+    print p.lexer.lineno, p
+    pass
+
+
+def p_statement(p):
+    '''statement : simple_statement SEMICOLON
+                 | compound_statement'''
+    p[0] = p[1]
+    print p[1]
 
 
 def p_statements_1(p):
@@ -475,40 +619,31 @@ def p_statements_or_empty(p):
     p[0] = p[1]
 
 
-def p_return_statement(p):
-    'return_statement : RETURN expression_or_empty SEMICOLON'
-    p[0] = ('return-statement', p[2])
-
-
-def p_start(p):
-    'start : class_declaration declarations'
-    print p[1]
+def p_compound_statement(p):
+    '''compound_statement : for_statement
+                          | while_statement
+                          | if_statement'''
     p[0] = p[1]
 
 
-def p_break_statement(p):
-    'break_statement : BREAK SEMICOLON'
-    p[0] = ('break_statement')
+def p_for_statement(p):
+    '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN LCURLY statements_or_empty RCURLY'''
+    p[0] = ('for-statement', (p[3], p[5], p[7]))
 
 
-def p_continue_statement(p):
-    'continue_statement : CONTINUE SEMICOLON'
-    p[0] = ('continue-statement')
+def p_while_statement(p):
+    'while_statement : WHILE LPAREN expression RPAREN'
+    p[0] = ('while-statement', (p[3]))
 
 
-def p_error(p):
-    print p
-    pass
-
-
-def p_for_block(p):
-    '''for_block : FOR LPAREN expression_or_empty SEMICOLON expression_or_empty SEMICOLON expression_or_empty RPAREN LCURLY expression_or_empty RCURLY'''
-    p[0] = ('for-block', (p[3], p[5], p[7]))
-
-
-def p_while_block(p):
-    'while_block : WHILE LPAREN expression_or_empty RPAREN'
-    p[0] = ('while-block', (p[3]))
+def p_if_statement(p):
+    '''if_statement : IF LPAREN expression RPAREN statement
+                    | IF LPAREN expression RPAREN LCURLY statements_or_empty RCURLY'''
+    if len(p) == 5:
+        p[0] = ('if-statement', (p[3], p[5]))
+    else:
+        print ('if-statement', (p[3], p[6]))
+        p[0] = ('if_statement', (p[3], p[6]))
 
 
 parser = yacc.yacc()
@@ -516,4 +651,5 @@ parser = yacc.yacc()
 for root, dirs, files in os.walk('C:\Users\colin_000\Documents\GitHub\DarkestHourDev\darkesthour\UCore\Classes'):
     for file in files:
         with open(os.path.join(root, file), 'rb') as f:
+            lexer.lineno = 0
             parser.parse(f.read())
