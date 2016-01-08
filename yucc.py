@@ -29,7 +29,9 @@ def p_binary_operator(p):
                        | ADD
                        | MINUS
                        | LANGLE
-                       | RANGLE'''
+                       | RANGLE
+                       | SCONCAT
+                       | SCONCATSPACE'''
     p[0] = p[1]
 
 
@@ -51,7 +53,7 @@ def p_atom(p):
 
 def p_subscription(p):
     'subscription : primary LSQUARE expression RSQUARE'
-    p[0] = ('subscription', (p[1], p[2]))
+    p[0] = ('subscription', (p[1], p[3]))
 
 
 def p_primary(p):
@@ -71,7 +73,7 @@ def p_argument_list_1(p):
 
 def p_argument_list_2(p):
     'argument_list : argument_list COMMA expression'
-    p[0] = p[1] + [p[2]]
+    p[0] = p[1] + [p[3]]
 
 
 def p_argument_list_or_empty(p):
@@ -92,13 +94,13 @@ def p_attribute(p):
 
 def p_target(p):
     '''target : identifier
-              | attribute'''
+              | attribute
+              | subscription'''  # TODO: doesn't count A[3]
     p[0] = p[1]
 
 
 def p_assignment_statement(p):
     'assignment_statement : target ASSIGN expression'
-    print ('assignment-statement', (p[1], p[3]))
     p[0] = ('assignment-statement', (p[1], p[3]))
 
 
@@ -116,7 +118,8 @@ def p_boolean_literal(p):
 def p_literal(p):
     '''literal : string_literal
                | number
-               | boolean_literal'''
+               | boolean_literal
+               | NONE'''
     p[0] = p[1]
 
 
@@ -375,7 +378,8 @@ def p_function_modifier(p):
                          | NATIVE
                          | SIMULATED
                          | SINGULAR
-                         | STATIC'''
+                         | STATIC
+                         | PRIVATE'''
     p[0] = p[1]
 
 
@@ -410,14 +414,24 @@ def p_function_argument_modifier(p):
     p[0] = p[1]
 
 
-def p_function_argument_modifier_or_empty(p):
-    '''function_argument_modifier_or_empty : function_argument_modifier
-                                           | empty'''
+def p_function_argument_modifiers_1(p):
+    'function_argument_modifiers : function_argument_modifier'
+    p[0] = [p[1]]
+
+
+def p_function_argument_modifiers_2(p):
+    'function_argument_modifiers : function_argument_modifiers function_argument_modifier'
+    p[0] = p[1] + [p[2]]
+
+
+def p_function_argument_modifiers_or_empty(p):
+    '''function_argument_modifiers_or_empty : function_argument_modifiers
+                                            | empty'''
     p[0] = p[1]
 
 
 def p_function_argument(p):
-    '''function_argument : function_argument_modifier_or_empty type identifier'''
+    '''function_argument : function_argument_modifiers_or_empty type identifier'''
     p[0] = p[3], p[2], p[1]
 
 
@@ -550,7 +564,8 @@ def p_simple_statement(p):
     '''simple_statement : return_statement
                         | break_statement
                         | continue_statement
-                        | assignment_statement'''
+                        | assignment_statement
+                        | expression'''
     p[0] = p[1]
 
 
@@ -632,8 +647,12 @@ def p_for_statement(p):
 
 
 def p_while_statement(p):
-    'while_statement : WHILE LPAREN expression RPAREN'
-    p[0] = ('while-statement', (p[3]))
+    '''while_statement : WHILE LPAREN expression RPAREN statement
+                       | WHILE LPAREN expression RPAREN LCURLY statements_or_empty RCURLY'''
+    if len(p) == 5:
+        p[0] = ('while-statement', (p[3], p[5]))
+    else:
+        p[0] = ('while-statement', (p[3], p[6]))
 
 
 def p_if_statement(p):
@@ -642,7 +661,6 @@ def p_if_statement(p):
     if len(p) == 5:
         p[0] = ('if-statement', (p[3], p[5]))
     else:
-        print ('if-statement', (p[3], p[6]))
         p[0] = ('if_statement', (p[3], p[6]))
 
 
@@ -653,3 +671,4 @@ for root, dirs, files in os.walk('C:\Users\colin_000\Documents\GitHub\DarkestHou
         with open(os.path.join(root, file), 'rb') as f:
             lexer.lineno = 0
             parser.parse(f.read())
+            break
