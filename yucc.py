@@ -5,6 +5,9 @@ import os
 constants = dict()
 start = 'start'
 
+precedence = (
+
+  )
 
 def p_unary_operator(p):
     '''unary_operator : MINUS
@@ -471,11 +474,9 @@ def p_function_declaration(p):
     '''function_declaration : function_modifiers_or_empty function_type type identifier LPAREN function_arguments_or_empty RPAREN
                             | function_modifiers_or_empty function_type identifier LPAREN function_arguments_or_empty RPAREN'''
     if len(p) == 8:  # return type
-        p[0] = ('function-declaration', (p[4], p[3], p[2], p[1], p[6]))
+        p[0] = (p[4], p[3], p[2], p[1], p[6])
     else:            # no return type
-        p[0] = ('function-declaration', (p[3], None, p[2], p[1], p[5]))
-
-    print p[0]
+        p[0] = (p[3], None, p[2], p[1], p[5])
 
 
 def p_function_definition(p):
@@ -484,7 +485,8 @@ def p_function_definition(p):
     if len(p) == 2:  # no body
         p[0] = ('function-definition', p[1])
     else:
-        p[0] = ('function-definition', (p[1], p[2]))
+        p[0] = ('function-definition', (p[1], p[3]))
+    print p[0]
 
 
 def p_declaration(p):
@@ -546,7 +548,7 @@ def p_local_declarations_or_empty(p):
 
 def p_function_body(p):
     'function_body : local_declarations_or_empty statements_or_empty'
-    p[0] = ('function-body', (p[1], p[2]))
+    p[0] = (p[1], p[2])
 
 
 def p_expression(p):
@@ -655,9 +657,51 @@ def p_while_statement(p):
         p[0] = ('while-statement', (p[3], p[6]))
 
 
+def p_elif_statement(p):
+    '''elif_statement : ELSE IF LPAREN expression RPAREN statement
+                      | ELSE IF LPAREN expression RPAREN LCURLY statements_or_empty RCURLY'''
+    if (len(p) == 6):
+        print (p[4], p[6])
+        p[0] = (p[4], p[6])
+    else:
+        print (p[4], p[7])
+        p[0] = (p[4], p[7])
+
+
+def p_elif_statements_1(p):
+    '''elif_statements : elif_statement'''
+    p[0] = [p[1]]
+
+
+def p_elif_statements_2(p):
+    '''elif_statements : elif_statements elif_statement'''
+    p[0] = p[1] + [p[2]]
+
+
+def p_elif_statements_or_empty(p):
+    '''elif_statements_or_empty : elif_statements
+                                | empty'''
+    p[0] = p[1]
+
+
+def p_else_statement(p):
+    '''else_statement : ELSE statement
+                      | ELSE LCURLY statements_or_empty RCURLY'''
+    if (len(p) == 2):
+        p[0] = p[2]
+    else:
+        p[0] = p[3]
+
+
+def p_else_statement_or_empty(p):
+    '''else_statement_or_empty : else_statement
+                               | empty'''
+    p[0] = p[1]
+
+
 def p_if_statement(p):
-    '''if_statement : IF LPAREN expression RPAREN statement
-                    | IF LPAREN expression RPAREN LCURLY statements_or_empty RCURLY'''
+    '''if_statement : IF LPAREN expression RPAREN statement elif_statements_or_empty else_statement_or_empty
+                    | IF LPAREN expression RPAREN LCURLY statements_or_empty RCURLY elif_statements_or_empty else_statement_or_empty'''
     if len(p) == 5:
         p[0] = ('if-statement', (p[3], p[5]))
     else:
@@ -669,6 +713,6 @@ parser = yacc.yacc()
 for root, dirs, files in os.walk('C:\Users\colin_000\Documents\GitHub\DarkestHourDev\darkesthour\UCore\Classes'):
     for file in files:
         with open(os.path.join(root, file), 'rb') as f:
-            lexer.lineno = 0
+            lexer.lineno = 1
             parser.parse(f.read())
             break
