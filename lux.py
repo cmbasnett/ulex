@@ -232,7 +232,9 @@ tokens = [
     'BITWISE_NOT',
     'ID',
     'LEQUAL',
-    'GEQUAL'
+    'GEQUAL',
+    'IASSIGN',
+    'DASSIGN'
     ] + list(reserved.values())
 
 t_LPAREN = r'\('
@@ -257,7 +259,7 @@ t_NOT = r'!'
 t_INCREMENT = r'\+\+'
 t_ADD = r'\+'
 t_MULTIPLY = r'\*'
-t_AND = r'&&'
+t_AND = r'\&\&'
 t_MINUS = r'-'
 t_COLON = r':'
 t_SEQUAL = r'~='
@@ -271,8 +273,10 @@ t_LEFT_SHIFT = r'<<'
 t_RIGHT_SHIFT = r'>>'
 t_XOR = r'\^'
 t_BITWISE_NOT = r'~'
-t_LEQUAL = r'<='
+t_LEQUAL = r'\<\='
 t_GEQUAL = r'>='
+t_IASSIGN = r'\+='
+t_DASSIGN = r'-='
 
 
 def t_DIRECTIVE(t):

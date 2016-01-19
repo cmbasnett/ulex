@@ -5,9 +5,6 @@ import os
 constants = dict()
 start = 'start'
 
-precedence = (
-
-  )
 
 def p_unary_operator(p):
     '''unary_operator : MINUS
@@ -19,7 +16,7 @@ def p_unary_operator(p):
 
 def p_unary_operation(p):
     'unary_operation : unary_operator expression'
-    p[0] = ('unary-operation' (p[1], p[2]))
+    p[0] = ('unary-operation', p[1], p[2])
 
 
 def p_binary_operator(p):
@@ -34,8 +31,17 @@ def p_binary_operator(p):
                        | LANGLE
                        | RANGLE
                        | SCONCAT
-                       | SCONCATSPACE'''
+                       | SCONCATSPACE
+                       | OR
+                       | IASSIGN
+                       | DASSIGN
+                       | AND'''
     p[0] = p[1]
+
+
+def p_allocation(p):
+    'allocation : NEW REFERENCE'
+    p[0] = ('allocation', p[2])
 
 
 def p_binary_operation(p):
@@ -44,13 +50,15 @@ def p_binary_operation(p):
 
 
 def p_identifier(p):
-    '''identifier : ID'''
+    '''identifier : ID
+                  | SELF'''
     p[0] = p[1]
 
 
 def p_atom(p):
     '''atom : identifier
-            | literal'''
+            | literal
+            | allocation'''
     p[0] = p[1]
 
 
@@ -206,7 +214,6 @@ def p_var_modifiers_or_empty(p):
 def p_var_declaration(p):
     'var_declaration : VAR var_modifiers_or_empty type var_names SEMICOLON'
     p[0] = ('var-declaration', (p[3], p[4], p[2]))
-    print p[0]
 
 
 def p_generic_type(p):
@@ -365,7 +372,6 @@ def p_class_declaration(p):
         error(p, 'Classes cannot extend themselves.')
         raise SyntaxError
     p[0] = ('class-declaration', (p[2], p[3], p[4]))
-    print p[0]
 
 
 def p_struct_declaration(p):
@@ -457,7 +463,6 @@ def p_function_arguments_or_empty(p):
 def p_local_declaration(p):
     'local_declaration : LOCAL type var_names SEMICOLON'
     p[0] = ('local-declaration', (p[2], p[3]))
-    print p[0]
 
 
 def p_local_declarations_1(p):
@@ -477,16 +482,19 @@ def p_function_declaration(p):
         p[0] = (p[4], p[3], p[2], p[1], p[6])
     else:            # no return type
         p[0] = (p[3], None, p[2], p[1], p[5])
+    print p[0]
 
 
 def p_function_definition(p):
     '''function_definition : function_declaration SEMICOLON
                            | function_declaration LCURLY function_body RCURLY'''
+    print len(p)
     if len(p) == 2:  # no body
-        p[0] = ('function-definition', p[1])
+        p[0] = ('function_definition', p[1], None)
     else:
-        p[0] = ('function-definition', (p[1], p[3]))
-    print p[0]
+        p[0] = ('function_definition', p[1], p[3])
+    # TODO: check that delegate does not have a function_body
+    # TODO: check function has not already been defined
 
 
 def p_declaration(p):
@@ -516,7 +524,7 @@ def p_defaultproperties_assignment_value(p):
 
 def p_defaultproperties_assignment(p):
     'defaultproperties_assignment : var_name ASSIGN defaultproperties_assignment_value'
-    p[0] = ('defaultproperties-assignment', (p[1], p[3]))
+    p[0] = ('defaultproperties-assignment', p[1], p[3])
 
 
 def p_defaultproperties_assignments_1(p):
@@ -537,7 +545,7 @@ def p_defaultproperties_assignments_or_empty(p):
 
 def p_defaultproperties(p):
     'defaultproperties : DEFAULTPROPERTIES LCURLY defaultproperties_assignments_or_empty RCURLY'
-    p[0] = ('defaultproperties', (p[3]))
+    p[0] = ('defaultproperties', p[3])
 
 
 def p_local_declarations_or_empty(p):
@@ -594,7 +602,6 @@ def p_return_statement(p):
 
 def p_start(p):
     'start : class_declaration declarations'
-    print p[1]
     p[0] = p[1]
 
 
@@ -610,14 +617,13 @@ def p_continue_statement(p):
 
 def p_error(p):
     print p.lexer.lineno, p
-    pass
 
 
 def p_statement(p):
     '''statement : simple_statement SEMICOLON
                  | compound_statement'''
     p[0] = p[1]
-    print p[1]
+    #print p[1]
 
 
 def p_statements_1(p):
@@ -644,36 +650,23 @@ def p_compound_statement(p):
 
 
 def p_for_statement(p):
-    '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN LCURLY statements_or_empty RCURLY'''
-    p[0] = ('for-statement', (p[3], p[5], p[7]))
+    '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN statement_block'''
+    p[0] = ('for-statement', p[3], p[5], p[7])
 
 
 def p_while_statement(p):
     '''while_statement : WHILE LPAREN expression RPAREN statement
-                       | WHILE LPAREN expression RPAREN LCURLY statements_or_empty RCURLY'''
-    if len(p) == 5:
-        p[0] = ('while-statement', (p[3], p[5]))
-    else:
-        p[0] = ('while-statement', (p[3], p[6]))
+                       | WHILE LPAREN expression RPAREN statement_block'''
+    p[0] = ('while-statement', p[3], p[5])
 
 
 def p_elif_statement(p):
     '''elif_statement : ELSE IF LPAREN expression RPAREN statement
-                      | ELSE IF LPAREN expression RPAREN LCURLY statements_or_empty RCURLY'''
-    if (len(p) == 6):
-        print (p[4], p[6])
-        p[0] = (p[4], p[6])
-    else:
-        print (p[4], p[7])
-        p[0] = (p[4], p[7])
+                      | ELSE IF LPAREN expression RPAREN statement_block'''
+    p[0] = (p[4], p[6])
 
 
-def p_elif_statements_1(p):
-    '''elif_statements : elif_statement'''
-    p[0] = [p[1]]
-
-
-def p_elif_statements_2(p):
+def p_elif_statements(p):
     '''elif_statements : elif_statements elif_statement'''
     p[0] = p[1] + [p[2]]
 
@@ -686,11 +679,8 @@ def p_elif_statements_or_empty(p):
 
 def p_else_statement(p):
     '''else_statement : ELSE statement
-                      | ELSE LCURLY statements_or_empty RCURLY'''
-    if (len(p) == 2):
-        p[0] = p[2]
-    else:
-        p[0] = p[3]
+                      | ELSE statement_block'''
+    p[0] = p[2]
 
 
 def p_else_statement_or_empty(p):
@@ -700,12 +690,52 @@ def p_else_statement_or_empty(p):
 
 
 def p_if_statement(p):
-    '''if_statement : IF LPAREN expression RPAREN statement elif_statements_or_empty else_statement_or_empty
-                    | IF LPAREN expression RPAREN LCURLY statements_or_empty RCURLY elif_statements_or_empty else_statement_or_empty'''
-    if len(p) == 5:
-        p[0] = ('if-statement', (p[3], p[5]))
-    else:
-        p[0] = ('if_statement', (p[3], p[6]))
+    '''if_statement : IF LPAREN expression RPAREN statement       elif_statements_or_empty else_statement_or_empty
+                    | IF LPAREN expression RPAREN statement_block elif_statements_or_empty else_statement_or_empty'''
+    p[0] = ('if-statement', p[3], p[5], p[6], p[7])
+
+
+def p_reliability(p):
+    '''reliability : RELIABLE
+                   | UNRELIABLE'''
+    p[0] = p[1]
+
+
+def p_replication_statement(p):
+    'replication_statement : reliability IF LPAREN expression RPAREN id_list SEMICOLON'
+    p[0] = p[3], p[5]
+
+
+def p_replication_statements_1(p):
+    'replication_statements : replication_statement'
+    p[0] = [p[1]]
+
+
+def p_replication_statements_2(p):
+    'replication_statements : replication_statements replication_statement'
+    p[0] = p[1] + [p[2]]
+
+
+def p_replication_statements_or_empty(p):
+    '''replication_statements_or_empty : replication_statements
+                                       | empty'''
+    p[0] = p[1]
+
+
+def p_replication_block(p):
+    '''replication_block : REPLICATION LCURLY replication_statements RCURLY'''
+    p[0] = ('replication_block', p[3])
+
+
+def p_statement_block(p):
+    '''statement_block : LCURLY statements_or_empty RCURLY'''
+    p[0] = p[1]
+
+
+def p_elif_empty(p):
+    '''elif_statements :
+       else_statement :'''
+    p[0] = []
 
 
 parser = yacc.yacc()
@@ -715,4 +745,3 @@ for root, dirs, files in os.walk('C:\Users\colin_000\Documents\GitHub\DarkestHou
         with open(os.path.join(root, file), 'rb') as f:
             lexer.lineno = 1
             parser.parse(f.read())
-            break
