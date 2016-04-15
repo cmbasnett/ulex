@@ -1,15 +1,19 @@
 from ply import yacc
 from lux import tokens, lexer
 import os
+import pprint
 
-constants = dict()
+constants = {}
 start = 'start'
+classes = set()
+generic_types = []
 
 
 def p_unary_operator(p):
     '''unary_operator : MINUS
                       | NOT
                       | INCREMENT
+                      | DECREMENT
                       | BITWISE_NOT'''
     p[0] = p[1]
 
@@ -46,7 +50,7 @@ def p_allocation(p):
 
 def p_binary_operation(p):
     'binary_operation : expression binary_operator expression'
-    p[0] = ('binary-operation', (p[2], p[1], p[3]))
+    p[0] = ('binary-operation', p[2], p[1], p[3])
 
 
 def p_identifier(p):
@@ -55,9 +59,15 @@ def p_identifier(p):
     p[0] = p[1]
 
 
+def p_reference(p):
+    'reference : REFERENCE'
+    p[0] = ('reference', p[1])
+
+
 def p_atom(p):
     '''atom : identifier
             | literal
+            | reference
             | allocation'''
     p[0] = p[1]
 
@@ -71,6 +81,8 @@ def p_primary(p):
     '''primary : atom
                | attribute
                | subscription
+               | super_call
+               | static_call
                | call
                | unary_operation
                | binary_operation'''
@@ -135,7 +147,7 @@ def p_literal(p):
 
 
 def error(p, s):
-    print p.lexer.lineno, s
+    print p
     raise SyntaxError
 
 
@@ -213,12 +225,14 @@ def p_var_modifiers_or_empty(p):
 
 def p_var_declaration(p):
     'var_declaration : VAR var_modifiers_or_empty type var_names SEMICOLON'
-    p[0] = ('var-declaration', (p[3], p[4], p[2]))
+    p[0] = ('var_declaration', (p[3], p[4], p[2]))
 
 
 def p_generic_type(p):
     'generic_type : identifier LANGLE type_list RANGLE'
     p[0] = p[1], p[3]
+    global generic_types
+    generic_types.append(p[0])
 
 
 def p_array(p):
@@ -354,7 +368,7 @@ def p_const_declaration(p):
     'const_declaration : CONST identifier ASSIGN literal SEMICOLON'
     global constants
     #constants[p[2]] = p[4]
-    p[0] = ('const-declaration' (p[2], p[4]))
+    p[0] = ('const_declaration' (p[2], p[4]))
 
 
 def p_extends_1(p):
@@ -371,7 +385,7 @@ def p_class_declaration(p):
     if p[2] == p[3]:
         error(p, 'Classes cannot extend themselves.')
         raise SyntaxError
-    p[0] = ('class-declaration', (p[2], p[3], p[4]))
+    p[0] = ('class_declaration', (p[2], p[3], p[4]))
 
 
 def p_struct_declaration(p):
@@ -405,7 +419,10 @@ def p_function_modifiers_2(p):
 def p_function_modifiers_or_empty(p):
     '''function_modifiers_or_empty : function_modifiers
                                    | empty'''
-    p[0] = p[1]
+    if p[1] is None:
+        p[0] = []
+    else:
+        p[0] = p[1]
 
 
 def p_function_type(p):
@@ -462,7 +479,7 @@ def p_function_arguments_or_empty(p):
 
 def p_local_declaration(p):
     'local_declaration : LOCAL type var_names SEMICOLON'
-    p[0] = ('local-declaration', (p[2], p[3]))
+    p[0] = ('local_declaration', (p[2], p[3]))
 
 
 def p_local_declarations_1(p):
@@ -476,31 +493,31 @@ def p_local_declarations_2(p):
 
 
 def p_function_declaration(p):
-    '''function_declaration : function_modifiers_or_empty function_type type identifier LPAREN function_arguments_or_empty RPAREN
-                            | function_modifiers_or_empty function_type identifier LPAREN function_arguments_or_empty RPAREN'''
-    if len(p) == 8:  # return type
-        p[0] = (p[4], p[3], p[2], p[1], p[6])
+    '''function_declaration : function_modifiers_or_empty function_type function_modifiers_or_empty type identifier LPAREN function_arguments_or_empty RPAREN
+                            | function_modifiers_or_empty function_type function_modifiers_or_empty identifier LPAREN function_arguments_or_empty RPAREN'''
+    if len(p) == 9:  # return type
+        p[0] = (p[5], p[4], p[2], p[1] + p[3], p[7])
     else:            # no return type
-        p[0] = (p[3], None, p[2], p[1], p[5])
-    print p[0]
+        p[0] = (p[4], None, p[2], p[1] + p[3], p[6])
 
 
 def p_function_definition(p):
     '''function_definition : function_declaration SEMICOLON
                            | function_declaration LCURLY function_body RCURLY'''
-    print len(p)
-    if len(p) == 2:  # no body
+    if len(p) == 3:  # no body
         p[0] = ('function_definition', p[1], None)
-    else:
+    else:            # body
         p[0] = ('function_definition', p[1], p[3])
-    # TODO: check that delegate does not have a function_body
-    # TODO: check function has not already been defined
+
+    if p[0][1][2].lower() == 'delegate' and p[0][2] is not None:
+        raise SyntaxError
 
 
 def p_declaration(p):
     '''declaration : const_declaration
                    | function_definition
                    | var_declaration'''
+    p[0] = p[1]
 
 
 def p_declarations_1(p):
@@ -511,6 +528,11 @@ def p_declarations_1(p):
 def p_declarations_2(p):
     'declarations : declarations declaration'
     p[0] = p[1] + [p[2]]
+
+def p_declarations_or_empty(p):
+    '''declarations_or_empty : declarations
+                             | empty'''
+    p[0] = p[1]
 
 
 #def p_defaultproperties_object(p):
@@ -601,8 +623,8 @@ def p_return_statement(p):
 
 
 def p_start(p):
-    'start : class_declaration declarations'
-    p[0] = p[1]
+    'start : class_declaration declarations_or_empty'
+    p[0] = (p[1], p[2])
 
 
 def p_break_statement(p):
@@ -616,14 +638,13 @@ def p_continue_statement(p):
 
 
 def p_error(p):
-    print p.lexer.lineno, p
+    raise SyntaxError((p.lexer.lineno, p))
 
 
 def p_statement(p):
     '''statement : simple_statement SEMICOLON
                  | compound_statement'''
     p[0] = p[1]
-    #print p[1]
 
 
 def p_statements_1(p):
@@ -651,7 +672,7 @@ def p_compound_statement(p):
 
 def p_for_statement(p):
     '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN statement_block'''
-    p[0] = ('for-statement', p[3], p[5], p[7])
+    p[0] = ('for-statement', p[3], p[5], p[7], p[9])
 
 
 def p_while_statement(p):
@@ -729,7 +750,7 @@ def p_replication_block(p):
 
 def p_statement_block(p):
     '''statement_block : LCURLY statements_or_empty RCURLY'''
-    p[0] = p[1]
+    p[0] = p[2]
 
 
 def p_elif_empty(p):
@@ -738,10 +759,39 @@ def p_elif_empty(p):
     p[0] = []
 
 
-parser = yacc.yacc()
+def p_super_call(p):
+    'super_call : SUPER paren_id_or_empty PERIOD call'
+    p[0] = ('super_call', p[2], p[4])
 
-for root, dirs, files in os.walk('C:\Users\colin_000\Documents\GitHub\DarkestHourDev\darkesthour\UCore\Classes'):
+
+def p_cast(p):
+    'cast : type LPAREN expression RPAREN'
+    p[0] = ('cast', p[1], p[3])
+
+
+def p_static_call(p):
+    'static_call : reference PERIOD STATIC PERIOD call'
+    p[0] = ('static_call', p[1], p[5])
+
+precedence = (
+    ('left', 'ADD', 'MINUS'),
+    ('left', 'MULTIPLY', 'DIVIDE')
+)
+
+parser = yacc.yacc(debug=True)
+
+asts = dict()
+
+for root, dirs, files in os.walk('src'):
     for file in files:
+        filename, extension = os.path.splitext(file)
+        print filename
+        # generate ASTs for all files
         with open(os.path.join(root, file), 'rb') as f:
             lexer.lineno = 1
-            parser.parse(f.read())
+            try:
+                # build the abstract syntax tree
+                ast = parser.parse(f.read())
+                asts[filename] = ast
+            except SyntaxError as e:
+                print e

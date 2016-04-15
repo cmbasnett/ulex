@@ -211,6 +211,7 @@ tokens = [
     'OR',
     'NOT',
     'INCREMENT',
+    'DECREMENT',
     'ADD',
     'MULTIPLY',
     'AND',
@@ -257,6 +258,7 @@ t_NEQUAL = r'!='
 t_OR = r'\|\|'
 t_NOT = r'!'
 t_INCREMENT = r'\+\+'
+t_DECREMENT = r'\-\-'
 t_ADD = r'\+'
 t_MULTIPLY = r'\*'
 t_AND = r'\&\&'
