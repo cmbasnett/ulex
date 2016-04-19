@@ -3,10 +3,11 @@
 //==============================================================================
 
 class ArrayList extends Object
+  abstract
   template(T);
 
 var array<T> Items;
-
+/*
 function Add(T Item)
 {
     Items[Items.Length] = Item;
@@ -102,3 +103,4 @@ function array<T> ToArray()
 {
     return Items;
 }
+*/

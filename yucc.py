@@ -56,7 +56,7 @@ def p_binary_operation(p):
 def p_identifier(p):
     '''identifier : ID
                   | SELF'''
-    p[0] = p[1]
+    p[0] = ('identifier', p[1])
 
 
 def p_reference(p):
@@ -102,7 +102,7 @@ def p_argument_list_2(p):
 def p_argument_list_or_empty(p):
     '''argument_list_or_empty : argument_list
                               | empty'''
-    p[0] = p[1]
+    p[0] = ('argument_list', p[1])
 
 
 def p_call(p):
@@ -182,6 +182,9 @@ def p_var_name(p):
     p[0] = p[1], p[2]
 
 
+#TODO: varnames with AST identifier properly please
+
+
 def p_var_modifier(p):
     '''var_modifier     : AUTOMATED
                         | CACHE
@@ -257,7 +260,7 @@ def p_type(p):
             | array
             | generic_type
             | identifier'''
-    p[0] = p[1]
+    p[0] = ('type', p[1])
 
 
 def p_type_or_empty(p):
@@ -266,14 +269,19 @@ def p_type_or_empty(p):
     p[0] = p[1]
 
 
-def p_id_list_1(p):
-    'id_list : identifier'
+def p_identifier_list_1(p):
+    'identifier_list : identifier'
     p[0] = [p[1]]
 
 
-def p_id_list_2(p):
-    'id_list : id_list COMMA identifier'
+def p_identifier_list_2(p):
+    'identifier_list : identifier_list COMMA identifier'
     p[0] = p[1] + [p[3]]
+
+def p_identifier_list_or_empty(p):
+    '''identifier_list_or_empty : identifier_list
+                                | empty'''
+    p[0] = ('identifier_list', p[1])
 
 
 def p_type_list_1(p):
@@ -307,8 +315,8 @@ def p_config(p):
 
 
 def p_template(p):
-    'template : TEMPLATE LPAREN id_list RPAREN'
-    if len(p[3]) > len(set(p[3])):
+    'template : TEMPLATE LPAREN identifier_list_or_empty RPAREN'
+    if len(p[3][1]) > len(set(p[3][1])):
         error(p, 'Template parameters must be unique.')
         raise SyntaxError
     p[0] = ('template', p[3])
@@ -344,7 +352,7 @@ def p_class_modifiers_2(p):
 def p_class_modifiers_or_empty(p):
     '''class_modifiers_or_empty : class_modifiers
                                 | empty'''
-    p[0] = p[1]
+    p[0] = ('class_modifiers', p[1])
 
 
 def p_within(p):
@@ -376,7 +384,7 @@ def p_extends_1(p):
 
 
 def p_extends_2(p):
-    'extends : EXTENDS identifier'
+    'extends : EXTENDS type'
     p[0] = p[2]
 
 
@@ -496,9 +504,9 @@ def p_function_declaration(p):
     '''function_declaration : function_modifiers_or_empty function_type function_modifiers_or_empty type identifier LPAREN function_arguments_or_empty RPAREN
                             | function_modifiers_or_empty function_type function_modifiers_or_empty identifier LPAREN function_arguments_or_empty RPAREN'''
     if len(p) == 9:  # return type
-        p[0] = (p[5], p[4], p[2], p[1] + p[3], p[7])
+        p[0] = ('function_declaration', (p[2], p[5], p[4], p[1] + p[3], p[7]))
     else:            # no return type
-        p[0] = (p[4], None, p[2], p[1] + p[3], p[6])
+        p[0] = ('function_declaration', (p[2], p[4], None, p[1] + p[3], p[6]))
 
 
 def p_function_definition(p):
@@ -509,7 +517,7 @@ def p_function_definition(p):
     else:            # body
         p[0] = ('function_definition', p[1], p[3])
 
-    if p[0][1][2].lower() == 'delegate' and p[0][2] is not None:
+    if p[0][1][0].lower() == 'delegate' and p[0][2] is not None:
         raise SyntaxError
 
 
@@ -529,10 +537,11 @@ def p_declarations_2(p):
     'declarations : declarations declaration'
     p[0] = p[1] + [p[2]]
 
+
 def p_declarations_or_empty(p):
     '''declarations_or_empty : declarations
                              | empty'''
-    p[0] = p[1]
+    p[0] = ('declarations', p[1])
 
 
 #def p_defaultproperties_object(p):
@@ -624,7 +633,7 @@ def p_return_statement(p):
 
 def p_start(p):
     'start : class_declaration declarations_or_empty'
-    p[0] = (p[1], p[2])
+    p[0] = ('start', [p[1]] + [p[2]])
 
 
 def p_break_statement(p):
@@ -723,7 +732,7 @@ def p_reliability(p):
 
 
 def p_replication_statement(p):
-    'replication_statement : reliability IF LPAREN expression RPAREN id_list SEMICOLON'
+    'replication_statement : reliability IF LPAREN expression RPAREN identifier_list SEMICOLON'
     p[0] = p[3], p[5]
 
 
@@ -793,5 +802,6 @@ for root, dirs, files in os.walk('src'):
                 # build the abstract syntax tree
                 ast = parser.parse(f.read())
                 asts[filename] = ast
+                #pprint.pprint(ast)
             except SyntaxError as e:
                 print e
