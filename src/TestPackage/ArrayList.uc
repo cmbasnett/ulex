@@ -3,11 +3,10 @@
 //==============================================================================
 
 class ArrayList extends Object
-  abstract
-  template(T);
+  template(T, U);
 
 var array<T> Items;
-/*
+
 function Add(T Item)
 {
     Items[Items.Length] = Item;
@@ -84,7 +83,7 @@ function RemoveRange(int FromIndex, int ToIndex)
     Items.Remove(FromIndex, Count);
 }
 
-function Resize(int Length)
+simulated function Resize(int Length)
 {
     Items.Length = Length;
 }
@@ -103,4 +102,3 @@ function array<T> ToArray()
 {
     return Items;
 }
-*/

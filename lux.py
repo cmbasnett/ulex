@@ -178,8 +178,8 @@ reserved = {
     'while': 'WHILE',
     # the following are keywords added by ulex
     'typeof': 'TYPEOF',
-    'sizeof': 'SIZEOF',
-    'typedef': 'TYPEDEF'
+    #'sizeof': 'SIZEOF',
+    #'typedef': 'TYPEDEF'
 }
 
 reserved.update(class_modifiers)
@@ -205,6 +205,7 @@ tokens = [
     'LQUOTE',
     'RQUOTE',
     'USTRING',
+    'PSTRING',
     'UFLOAT',
     'EQUAL',
     'NEQUAL',
@@ -297,6 +298,11 @@ def t_UNAME(t):
 
 def t_USTRING(t):
     r'"((\\{2})*|(.*?[^\\](\\{2})*))"'
+    return t
+
+
+def t_PSTRING(t):
+    r'\#"((\\{2})*|(.*?[^\\](\\{2})*))"'
     return t
 
 

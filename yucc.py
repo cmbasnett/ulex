@@ -20,7 +20,7 @@ def p_unary_operator(p):
 
 def p_unary_operation(p):
     'unary_operation : unary_operator expression'
-    p[0] = ('unary-operation', p[1], p[2])
+    p[0] = ('unary_operation', p[1], p[2])
 
 
 def p_binary_operator(p):
@@ -44,13 +44,17 @@ def p_binary_operator(p):
 
 
 def p_allocation(p):
-    'allocation : NEW REFERENCE'
-    p[0] = ('allocation', p[2])
+    '''allocation : NEW REFERENCE
+                  | NEW type LPAREN argument_list_or_empty RPAREN'''
+    if len(p) == 3:
+        p[0] = ('allocation', p[2])
+    elif len(p) == 5:
+        p[0] = ('allocation', p[2], p[4])
 
 
 def p_binary_operation(p):
     'binary_operation : expression binary_operator expression'
-    p[0] = ('binary-operation', p[2], p[1], p[3])
+    p[0] = ('binary_operation', p[2], p[1], p[3])
 
 
 def p_identifier(p):
@@ -74,7 +78,12 @@ def p_atom(p):
 
 def p_subscription(p):
     'subscription : primary LSQUARE expression RSQUARE'
-    p[0] = ('subscription', (p[1], p[3]))
+    p[0] = ('subscription', p[1], p[3])
+
+
+def p_string_parameterized(p):
+    'string_parameterized : PSTRING'
+    p[0] = ('string_parameterized', p[1])
 
 
 def p_primary(p):
@@ -85,7 +94,8 @@ def p_primary(p):
                | static_call
                | call
                | unary_operation
-               | binary_operation'''
+               | binary_operation
+               | string_parameterized'''
     p[0] = p[1]
 
 
@@ -107,12 +117,12 @@ def p_argument_list_or_empty(p):
 
 def p_call(p):
     '''call : primary LPAREN argument_list_or_empty RPAREN'''
-    p[0] = ('call', (p[1], p[3]))
+    p[0] = ('call', p[1], p[3])
 
 
 def p_attribute(p):
     '''attribute : primary PERIOD identifier'''
-    p[0] = ('attribute', (p[1], p[3]))
+    p[0] = ('attribute', p[1], p[3])
 
 
 def p_target(p):
@@ -124,7 +134,7 @@ def p_target(p):
 
 def p_assignment_statement(p):
     'assignment_statement : target ASSIGN expression'
-    p[0] = ('assignment-statement', (p[1], p[3]))
+    p[0] = ('assignment_statement', p[1], p[3])
 
 
 def p_string_literal(p):
@@ -157,7 +167,8 @@ def p_empty(p):
 
 
 def p_arrayindex(p):
-    'arrayindex : LSQUARE INTEGER RSQUARE'
+    '''arrayindex : LSQUARE INTEGER RSQUARE
+                  | LSQUARE identifier RSQUARE'''
     p[0] = p[2]
 
 
@@ -165,7 +176,6 @@ def p_arrayindex_or_empty(p):
     '''arrayindex_or_empty : arrayindex
                            | empty'''
     p[0] = p[1]
-
 
 def p_var_names_1(p):
     'var_names : var_name'
@@ -176,10 +186,14 @@ def p_var_names_2(p):
     'var_names : var_names COMMA var_name'
     p[0] = p[1] + [p[3]]
 
+def p_var_names(p):
+    'var_names : var_names'
+    p[0] = ('var_names', p[1])
+
 
 def p_var_name(p):
     'var_name : identifier arrayindex_or_empty'
-    p[0] = p[1], p[2]
+    p[0] = ('var_name', p[1], p[2])
 
 
 #TODO: varnames with AST identifier properly please
@@ -227,13 +241,13 @@ def p_var_modifiers_or_empty(p):
 
 
 def p_var_declaration(p):
-    'var_declaration : VAR var_modifiers_or_empty type var_names SEMICOLON'
-    p[0] = ('var_declaration', (p[3], p[4], p[2]))
+    'var_declaration : VAR paren_id_or_empty var_modifiers_or_empty type var_names SEMICOLON'
+    p[0] = ('var_declaration', p[4], p[5], p[3], p[2])
 
 
 def p_generic_type(p):
     'generic_type : identifier LANGLE type_list RANGLE'
-    p[0] = p[1], p[3]
+    p[0] = ('generic_type', p[1], p[3])
     global generic_types
     generic_types.append(p[0])
 
@@ -255,10 +269,21 @@ def p_primitive_type(p):
     p[0] = p[1]
 
 
+def p_typeof(p):
+    'typeof : TYPEOF LPAREN identifier RPAREN'
+    p[0] = ('typeof', p[3])
+
+
+def p_class_type(p):
+    'class_type : CLASS LANGLE identifier RANGLE'
+    p[0] = ('class_type', p[3])
+
+
 def p_type(p):
     '''type : primitive_type
             | array
             | generic_type
+            | class_type
             | identifier'''
     p[0] = ('type', p[1])
 
@@ -369,14 +394,14 @@ def p_dependson(p):
 def p_number(p):
     '''number : INTEGER
               | UFLOAT'''
-    p[0] = p[1]
+    p[0] = ('number', p[1])
 
 
 def p_const_declaration(p):
     'const_declaration : CONST identifier ASSIGN literal SEMICOLON'
-    global constants
+    #global constants
     #constants[p[2]] = p[4]
-    p[0] = ('const_declaration' (p[2], p[4]))
+    p[0] = ('const_declaration', p[2], p[4])
 
 
 def p_extends_1(p):
@@ -393,13 +418,12 @@ def p_class_declaration(p):
     if p[2] == p[3]:
         error(p, 'Classes cannot extend themselves.')
         raise SyntaxError
-    p[0] = ('class_declaration', (p[2], p[3], p[4]))
+    p[0] = ('class_declaration', p[2], p[3], p[4])
 
 
 def p_struct_declaration(p):
-    '''struct_declaration : STRUCT identifier extends LCURLY RCURLY'''
-    p[0] = p[2], p[3]
-
+    '''struct_declaration : STRUCT identifier LCURLY var_declarations_or_empty RCURLY'''
+    p[0] = ('struct_declaration', p[2], p[4])
 
 def p_function_modifier(p):
     '''function_modifier : EXEC
@@ -428,9 +452,9 @@ def p_function_modifiers_or_empty(p):
     '''function_modifiers_or_empty : function_modifiers
                                    | empty'''
     if p[1] is None:
-        p[0] = []
-    else:
-        p[0] = p[1]
+        p[1] = []
+
+    p[0] = ('function_modifiers', p[1])
 
 
 def p_function_type(p):
@@ -466,7 +490,7 @@ def p_function_argument_modifiers_or_empty(p):
 
 def p_function_argument(p):
     '''function_argument : function_argument_modifiers_or_empty type identifier'''
-    p[0] = p[3], p[2], p[1]
+    p[0] = ('function_argument', p[2], p[1], p[3])
 
 
 def p_function_arguments_1(p):
@@ -482,12 +506,15 @@ def p_function_arguments_2(p):
 def p_function_arguments_or_empty(p):
     '''function_arguments_or_empty : function_arguments
                                    | empty'''
-    p[0] = p[1]
+    if p[1] is None:
+        p[1] = []
+
+    p[0] = ('function_arguments', p[1])
 
 
 def p_local_declaration(p):
     'local_declaration : LOCAL type var_names SEMICOLON'
-    p[0] = ('local_declaration', (p[2], p[3]))
+    p[0] = ('local_declaration', p[2], p[3])
 
 
 def p_local_declarations_1(p):
@@ -503,10 +530,13 @@ def p_local_declarations_2(p):
 def p_function_declaration(p):
     '''function_declaration : function_modifiers_or_empty function_type function_modifiers_or_empty type identifier LPAREN function_arguments_or_empty RPAREN
                             | function_modifiers_or_empty function_type function_modifiers_or_empty identifier LPAREN function_arguments_or_empty RPAREN'''
+    # TODO: this is ugly
+    function_modifiers = p[1]
+    function_modifiers[1] + p[3][1]
     if len(p) == 9:  # return type
-        p[0] = ('function_declaration', (p[2], p[5], p[4], p[1] + p[3], p[7]))
+        p[0] = ('function_declaration', p[2], p[5], p[4], function_modifiers, p[7])
     else:            # no return type
-        p[0] = ('function_declaration', (p[2], p[4], None, p[1] + p[3], p[6]))
+        p[0] = ('function_declaration', p[2], p[4], None, function_modifiers, p[6])
 
 
 def p_function_definition(p):
@@ -582,12 +612,12 @@ def p_defaultproperties(p):
 def p_local_declarations_or_empty(p):
     '''local_declarations_or_empty : local_declarations
                                    | empty'''
-    p[0] = p[1]
+    p[0] = ('local_declarations', p[1])
 
 
 def p_function_body(p):
     'function_body : local_declarations_or_empty statements_or_empty'
-    p[0] = (p[1], p[2])
+    p[0] = ('function_body', p[1], p[2])
 
 
 def p_expression(p):
@@ -628,7 +658,7 @@ def p_simple_statement_list_or_empty(p):
 
 def p_return_statement(p):
     'return_statement : RETURN expression_or_empty'
-    p[0] = ('return-statement', p[2])
+    p[0] = ('return_statement', p[2])
 
 
 def p_start(p):
@@ -643,7 +673,7 @@ def p_break_statement(p):
 
 def p_continue_statement(p):
     'continue_statement : CONTINUE'
-    p[0] = ('continue-statement')
+    p[0] = ('continue_statement')
 
 
 def p_error(p):
@@ -669,7 +699,7 @@ def p_statements_2(p):
 def p_statements_or_empty(p):
     '''statements_or_empty : statements
                            | empty'''
-    p[0] = p[1]
+    p[0] = ('statements', p[1])
 
 
 def p_compound_statement(p):
@@ -681,7 +711,7 @@ def p_compound_statement(p):
 
 def p_for_statement(p):
     '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN statement_block'''
-    p[0] = ('for-statement', p[3], p[5], p[7], p[9])
+    p[0] = ('for_statement', p[3], p[5], p[7], p[9])
 
 
 def p_while_statement(p):
@@ -722,7 +752,7 @@ def p_else_statement_or_empty(p):
 def p_if_statement(p):
     '''if_statement : IF LPAREN expression RPAREN statement       elif_statements_or_empty else_statement_or_empty
                     | IF LPAREN expression RPAREN statement_block elif_statements_or_empty else_statement_or_empty'''
-    p[0] = ('if-statement', p[3], p[5], p[6], p[7])
+    p[0] = ('if_statement', p[3], p[5], p[6], p[7])
 
 
 def p_reliability(p):
@@ -794,7 +824,7 @@ asts = dict()
 for root, dirs, files in os.walk('src'):
     for file in files:
         filename, extension = os.path.splitext(file)
-        print filename
+        #print filename
         # generate ASTs for all files
         with open(os.path.join(root, file), 'rb') as f:
             lexer.lineno = 1
