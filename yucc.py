@@ -9,18 +9,29 @@ classes = set()
 generic_types = []
 
 
-def p_unary_operator(p):
-    '''unary_operator : MINUS
-                      | NOT
-                      | INCREMENT
-                      | DECREMENT
-                      | BITWISE_NOT'''
+def p_pre_unary_operator(p):
+    '''pre_unary_operator : MINUS
+                          | NOT
+                          | INCREMENT
+                          | DECREMENT
+                          | BITWISE_NOT'''
     p[0] = p[1]
 
 
-def p_unary_operation(p):
-    'unary_operation : unary_operator expression'
-    p[0] = ('unary_operation', p[1], p[2])
+def p_post_unary_operator(p):
+    '''post_unary_operator : INCREMENT
+                           | DECREMENT'''
+    p[0] = p[1]
+
+
+def p_unary_operation_1(p):
+    'unary_operation : pre_unary_operator expression'
+    p[0] = ('pre_unary_operation', p[1], p[2])
+
+
+def p_unary_operation_2(p):
+    'unary_operation : expression post_unary_operator'
+    p[0] = ('post_unary_operation', p[1], p[2])
 
 
 def p_binary_operator(p):
@@ -41,6 +52,21 @@ def p_binary_operator(p):
                        | DASSIGN
                        | AND'''
     p[0] = p[1]
+
+
+def p_vect(p):
+    'vect : VECT LPAREN number COMMA number COMMA number RPAREN'
+    p[0] = ('vect', p[3], p[5], p[7])
+
+
+def p_arraycount(p):
+    'arraycount : ARRAYCOUNT LPAREN expression RPAREN'
+    p[0] = ('arraycount', p[3])
+
+
+def p_default(p):
+    'default : DEFAULT PERIOD identifier'
+    p[0] = ('default', p[3])
 
 
 def p_allocation(p):
@@ -90,6 +116,7 @@ def p_primary(p):
     '''primary : atom
                | attribute
                | subscription
+               | default
                | super_call
                | static_call
                | call
@@ -128,7 +155,8 @@ def p_attribute(p):
 def p_target(p):
     '''target : identifier
               | attribute
-              | subscription'''  # TODO: doesn't count A[3]
+              | default
+              | subscription'''
     p[0] = p[1]
 
 
@@ -142,6 +170,11 @@ def p_string_literal(p):
     p[0] = p[1]
 
 
+def p_name_literal(p):
+    'name_literal : UNAME'
+    p[0] = p[1]
+
+
 def p_boolean_literal(p):
     '''boolean_literal : FALSE
                        | TRUE'''
@@ -150,7 +183,9 @@ def p_boolean_literal(p):
 
 def p_literal(p):
     '''literal : string_literal
+               | name_literal
                | number
+               | vect
                | boolean_literal
                | NONE'''
     p[0] = p[1]
@@ -241,8 +276,29 @@ def p_var_modifiers_or_empty(p):
 
 
 def p_var_declaration(p):
-    'var_declaration : VAR paren_id_or_empty var_modifiers_or_empty type var_names SEMICOLON'
+    'var_declaration : VAR paren_id_or_empty var_modifiers_or_empty var_type var_names SEMICOLON'
     p[0] = ('var_declaration', p[4], p[5], p[3], p[2])
+
+
+def p_struct_var_declaration(p):
+    'struct_var_declaration : VAR type var_names SEMICOLON'
+    p[0] = ('struct_var_declaration', p[2], p[3])
+
+
+def p_struct_var_declarations_1(p):
+    'struct_var_declarations : struct_var_declaration'
+    p[0] = [p[1]]
+
+
+def p_struct_var_declarations_2(p):
+    'struct_var_declarations : struct_var_declarations struct_var_declaration'
+    p[0] = p[1] + [p[2]]
+
+
+def p_struct_var_declarations_or_empty(p):
+    '''struct_var_declarations_or_empty : struct_var_declarations
+                                        | empty'''
+    p[0] = ('struct_var_declarations', p[1])
 
 
 def p_generic_type(p):
@@ -277,6 +333,12 @@ def p_typeof(p):
 def p_class_type(p):
     'class_type : CLASS LANGLE identifier RANGLE'
     p[0] = ('class_type', p[3])
+
+
+def p_var_type(p):
+    '''var_type : type
+                | struct_declaration'''
+    p[0] = p[1]
 
 
 def p_type(p):
@@ -393,7 +455,8 @@ def p_dependson(p):
 
 def p_number(p):
     '''number : INTEGER
-              | UFLOAT'''
+              | UFLOAT
+              | arraycount'''
     p[0] = ('number', p[1])
 
 
@@ -422,7 +485,7 @@ def p_class_declaration(p):
 
 
 def p_struct_declaration(p):
-    '''struct_declaration : STRUCT identifier LCURLY var_declarations_or_empty RCURLY'''
+    '''struct_declaration : STRUCT identifier LCURLY struct_var_declarations_or_empty RCURLY'''
     p[0] = ('struct_declaration', p[2], p[4])
 
 def p_function_modifier(p):
@@ -620,8 +683,13 @@ def p_function_body(p):
     p[0] = ('function_body', p[1], p[2])
 
 
-def p_expression(p):
-    '''expression : primary'''
+def p_expression_1(p):
+    'expresion : LPAREN expression RPAREN'
+    p[0] = p[2]
+
+
+def p_expression_2(p):
+    'expression : primary'
     p[0] = p[1]
 
 
@@ -704,9 +772,15 @@ def p_statements_or_empty(p):
 
 def p_compound_statement(p):
     '''compound_statement : for_statement
+                          | foreach_statement
                           | while_statement
                           | if_statement'''
     p[0] = p[1]
+
+
+def p_foreach_statement(p):
+    'foreach_statement : FOREACH identifier LPAREN argument_list_or_empty RPAREN statement_block'
+    p[0] = ('foreach_statement', p[2], p[4], p[6])
 
 
 def p_for_statement(p):
