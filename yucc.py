@@ -39,6 +39,8 @@ def p_binary_operator(p):
                        | NEQUAL
                        | LEQUAL
                        | GEQUAL
+                       | SEQUAL
+                       | MODULUS
                        | MULTIPLY
                        | DIVIDE
                        | ADD
@@ -69,13 +71,13 @@ def p_default(p):
     p[0] = ('default', p[3])
 
 
-def p_allocation(p):
-    '''allocation : NEW REFERENCE
-                  | NEW type LPAREN argument_list_or_empty RPAREN'''
-    if len(p) == 3:
-        p[0] = ('allocation', p[2])
-    elif len(p) == 5:
-        p[0] = ('allocation', p[2], p[4])
+def p_allocation_1(p):
+    'allocation : NEW REFERENCE'
+    p[0] = ('allocation', p[2])
+
+def p_allocation_2(p):
+    'allocation : NEW type LPAREN argument_list_or_empty RPAREN'
+    p[0] = ('allocation', p[2], p[4])
 
 
 def p_binary_operation(p):
@@ -85,6 +87,9 @@ def p_binary_operation(p):
 
 def p_identifier(p):
     '''identifier : ID
+                  | INIT
+                  | CLASS
+                  | primitive_type
                   | SELF'''
     p[0] = ('identifier', p[1])
 
@@ -115,24 +120,23 @@ def p_string_parameterized(p):
 def p_primary(p):
     '''primary : atom
                | attribute
-               | subscription
                | default
+               | subscription
                | super_call
                | static_call
                | call
                | unary_operation
-               | binary_operation
-               | string_parameterized'''
+               | binary_operation'''
     p[0] = p[1]
 
 
 def p_argument_list_1(p):
-    'argument_list : expression'
+    'argument_list : expression_or_empty'
     p[0] = [p[1]]
 
 
 def p_argument_list_2(p):
-    'argument_list : argument_list COMMA expression'
+    'argument_list : argument_list COMMA expression_or_empty'
     p[0] = p[1] + [p[3]]
 
 
@@ -148,7 +152,7 @@ def p_call(p):
 
 
 def p_attribute(p):
-    '''attribute : primary PERIOD identifier'''
+    'attribute : primary PERIOD primary'
     p[0] = ('attribute', p[1], p[3])
 
 
@@ -590,6 +594,7 @@ def p_local_declarations_2(p):
     p[0] = p[1] + [p[2]]
 
 
+# TODO: split in _1 and _2
 def p_function_declaration(p):
     '''function_declaration : function_modifiers_or_empty function_type function_modifiers_or_empty type identifier LPAREN function_arguments_or_empty RPAREN
                             | function_modifiers_or_empty function_type function_modifiers_or_empty identifier LPAREN function_arguments_or_empty RPAREN'''
@@ -617,7 +622,8 @@ def p_function_definition(p):
 def p_declaration(p):
     '''declaration : const_declaration
                    | function_definition
-                   | var_declaration'''
+                   | var_declaration
+                   | state_definition'''
     p[0] = p[1]
 
 
@@ -684,7 +690,7 @@ def p_function_body(p):
 
 
 def p_expression_1(p):
-    'expresion : LPAREN expression RPAREN'
+    'expression : LPAREN expression RPAREN'
     p[0] = p[2]
 
 
@@ -774,7 +780,9 @@ def p_compound_statement(p):
     '''compound_statement : for_statement
                           | foreach_statement
                           | while_statement
-                          | if_statement'''
+                          | if_statement
+                          | switch_statement
+                          | do_statement'''
     p[0] = p[1]
 
 
@@ -877,14 +885,77 @@ def p_super_call(p):
     p[0] = ('super_call', p[2], p[4])
 
 
-def p_cast(p):
-    'cast : type LPAREN expression RPAREN'
-    p[0] = ('cast', p[1], p[3])
+#def p_cast(p):
+#    'cast : type LPAREN expression RPAREN'
+#    p[0] = ('cast', p[1], p[3])
 
 
 def p_static_call(p):
-    'static_call : reference PERIOD STATIC PERIOD call'
+    'static_call : primary PERIOD STATIC PERIOD call'
     p[0] = ('static_call', p[1], p[5])
+
+
+def p_switch_statement(p):
+    'switch_statement : SWITCH LPAREN expression RPAREN LCURLY switch_cases RCURLY'
+    p[0] = ('switch_statement', p[3], p[6])
+
+
+def p_switch_case_1(p):
+    'switch_case : CASE primary COLON statements_or_empty'
+    p[0] = ('switch_case', p[2], p[4])
+
+
+def p_switch_case_2(p):
+    'switch_case : DEFAULT COLON statements_or_empty'
+    p[0] = ('default_case', p[3])
+
+
+def p_switch_cases_1(p):
+    'switch_cases : switch_cases switch_case'
+    p[0] = p[1] + [p[2]]
+
+
+def p_switch_cases_2(p):
+    'switch_cases : switch_case'
+    p[0] = [p[1]]
+
+
+def p_switch_cases_or_empty(p):
+    '''switch_cases_or_empty : switch_cases
+                             | empty'''
+    p[0] = p[1]
+
+
+def p_do_statement(p):
+    'do_statement : DO statement_block'
+    p[0] = ('do_statement', p[2])
+
+
+def p_state_modifier(p):
+    '''state_modifier : SIMULATED'''
+    p[0] = p[1]
+
+
+def p_state_modifiers_1(p):
+    'state_modifiers : state_modifier'
+    p[0] = [p[1]]
+
+
+def p_state_modifiers_2(p):
+    'state_modifiers : state_modifiers state_modifier'
+    p[0] = p[1] + [p[2]]
+
+
+def p_state_modifiers_or_empty(p):
+    '''state_modifiers_or_empty : state_modifiers
+                                | empty'''
+    p[0] = p[1]
+
+
+def p_state_definition(p):
+    'state_definition : state_modifiers_or_empty STATE identifier LCURLY declarations_or_empty RCURLY'
+    p[0] = ('state_definition', p[1], p[3], p[5])
+
 
 precedence = (
     ('left', 'ADD', 'MINUS'),
