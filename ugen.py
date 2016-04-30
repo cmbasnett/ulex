@@ -16,6 +16,12 @@ def u_function_modifiers(p):
 def u_if_statement(p):
     return 'if ({})\n{{\n{}\n}}'.format(unpack(p[1]), unpack(p[2]), unpack(p[3]))
 
+def u_pre_unary_operation(p):
+    return '{}{}'.format(unpack(p[1]), unpack(p[2]))
+
+def u_post_unary_operation(p):
+    return '{}{}'.format(unpack(p[1]), unpack(p[2]))
+
 def u_unary_operation(p):
     return '{}{}'.format(unpack(p[1]), unpack(p[2]))
 
