@@ -3,10 +3,7 @@ from lux import tokens, lexer
 import os
 import pprint
 
-constants = {}
 start = 'start'
-classes = set()
-generic_types = []
 
 
 def p_pre_unary_operator(p):
@@ -308,8 +305,6 @@ def p_struct_var_declarations_or_empty(p):
 def p_generic_type(p):
     'generic_type : identifier LANGLE type_list RANGLE'
     p[0] = ('generic_type', p[1], p[3])
-    global generic_types
-    generic_types.append(p[0])
 
 
 def p_array(p):
@@ -453,8 +448,7 @@ def p_within(p):
 
 def p_dependson(p):
     'dependson : DEPENDSON LPAREN identifier RPAREN'
-    p[0] = p[1], p[3]
-    p[0] = p[1]
+    p[0] = ('dependson', p[3])
 
 
 def p_number(p):
@@ -466,8 +460,6 @@ def p_number(p):
 
 def p_const_declaration(p):
     'const_declaration : CONST identifier ASSIGN literal SEMICOLON'
-    #global constants
-    #constants[p[2]] = p[4]
     p[0] = ('const_declaration', p[2], p[4])
 
 
@@ -482,9 +474,6 @@ def p_extends_2(p):
 
 def p_class_declaration(p):
     'class_declaration : CLASS identifier extends class_modifiers_or_empty SEMICOLON'
-    if p[2] == p[3]:
-        error(p, 'Classes cannot extend themselves.')
-        raise SyntaxError
     p[0] = ('class_declaration', p[2], p[3], p[4])
 
 
@@ -527,7 +516,8 @@ def p_function_modifiers_or_empty(p):
 def p_function_type(p):
     '''function_type : DELEGATE
                      | FUNCTION
-                     | EVENT'''
+                     | EVENT
+                     | CONSTRUCTOR'''
     p[0] = p[1]
 
 
@@ -963,20 +953,3 @@ precedence = (
 )
 
 parser = yacc.yacc(debug=True)
-
-asts = dict()
-
-for root, dirs, files in os.walk('src'):
-    for file in files:
-        filename, extension = os.path.splitext(file)
-        #print filename
-        # generate ASTs for all files
-        with open(os.path.join(root, file), 'rb') as f:
-            lexer.lineno = 1
-            try:
-                # build the abstract syntax tree
-                ast = parser.parse(f.read())
-                asts[filename] = ast
-                #pprint.pprint(ast)
-            except SyntaxError as e:
-                print e

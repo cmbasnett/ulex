@@ -2,7 +2,7 @@
 // Darklight Games (c) 2008-2016
 //==============================================================================
 
-class TreeMap_K_V extends Object;
+class TreeMap extends Object;
 
 var private TreeMapNode<K, V> Head;
 var private array<K> Keys;
@@ -10,6 +10,10 @@ var private array<V> Values;
 var private int Size;
 var private K RecursiveKey;
 var private V RecursiveValue;
+
+constructor TreeMap()
+{
+}
 
 function int GetSize()
 {
@@ -145,7 +149,7 @@ function Erase(K Key)
     Head = EraseStatic(self, Head);
 }
 
-private static function TreeMapNode<K, V> EraseStatic(TreeMap_K_V D, TreeMapNode<K, V> Node)
+private static function TreeMapNode<K, V> EraseStatic(TreeMap<K, V> D, TreeMapNode<K, V> Node)
 {
     local int Balance;
     local TreeMapNode<K, V> Temp;
@@ -272,7 +276,7 @@ private static function TreeMapNode<K, V> RotateLeft(TreeMapNode<K, V> X)
     return Y;
 }
 
-private static function TreeMapNode<K, V> PutStatic(TreeMap_K_V D, TreeMapNode<K, V> Node)
+private static function TreeMapNode<K, V> PutStatic(TreeMap<K, V> D, TreeMapNode<K, V> Node)
 {
     local int Balance;
 

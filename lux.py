@@ -107,6 +107,7 @@ reserved = {
     'class': 'CLASS',
     'coerce': 'COERCE',
     'collapsecategories': 'COLLAPSECATEGORIES',
+    'constructor': 'CONSTRUCTOR',
     'continue': 'CONTINUE',
     'default': 'DEFAULT',
     'defaultproperties': 'DEFAULTPROPERTIES',

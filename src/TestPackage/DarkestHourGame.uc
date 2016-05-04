@@ -1,10 +1,11 @@
+
 //==============================================================================
 // Darkest Hour: Europe '44-'45
 // Darklight Games (c) 2008-2016
 //==============================================================================
 
 class DarkestHourGame extends ROTeamGame;
-
+/*
 var     DH_LevelInfo                DHLevelInfo;
 
 var     DHAmmoResupplyVolume        DHResupplyAreas[10];
@@ -3631,3 +3632,4 @@ defaultproperties
 
     Version=(Major=6,Minor=0,Patch=4)
 }
+*/
