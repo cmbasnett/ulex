@@ -213,6 +213,7 @@ def p_arrayindex_or_empty(p):
                            | empty'''
     p[0] = p[1]
 
+
 def p_var_names_1(p):
     'var_names : var_name'
     p[0] = [p[1]]
@@ -221,6 +222,7 @@ def p_var_names_1(p):
 def p_var_names_2(p):
     'var_names : var_names COMMA var_name'
     p[0] = p[1] + [p[3]]
+
 
 def p_var_names(p):
     'var_names : var_names'
@@ -438,6 +440,8 @@ def p_class_modifiers_2(p):
 def p_class_modifiers_or_empty(p):
     '''class_modifiers_or_empty : class_modifiers
                                 | empty'''
+    if p[1] is None:
+        p[1] = []
     p[0] = ('class_modifiers', p[1])
 
 
@@ -481,6 +485,7 @@ def p_struct_declaration(p):
     '''struct_declaration : STRUCT identifier LCURLY struct_var_declarations_or_empty RCURLY'''
     p[0] = ('struct_declaration', p[2], p[4])
 
+
 def p_function_modifier(p):
     '''function_modifier : EXEC
                          | FINAL
@@ -516,8 +521,7 @@ def p_function_modifiers_or_empty(p):
 def p_function_type(p):
     '''function_type : DELEGATE
                      | FUNCTION
-                     | EVENT
-                     | CONSTRUCTOR'''
+                     | EVENT'''
     p[0] = p[1]
 
 
@@ -584,6 +588,11 @@ def p_local_declarations_2(p):
     p[0] = p[1] + [p[2]]
 
 
+def p_constructor_declaration(p):
+    'constructor : CONSTRUCTOR LPAREN function_arguments_or_empty RPAREN LCURLY function_body RCURLY'
+    p[0] = ('constructor', p[3], p[6])
+
+
 # TODO: split in _1 and _2
 def p_function_declaration(p):
     '''function_declaration : function_modifiers_or_empty function_type function_modifiers_or_empty type identifier LPAREN function_arguments_or_empty RPAREN
@@ -612,6 +621,7 @@ def p_function_definition(p):
 def p_declaration(p):
     '''declaration : const_declaration
                    | function_definition
+                   | constructor
                    | var_declaration
                    | state_definition'''
     p[0] = p[1]

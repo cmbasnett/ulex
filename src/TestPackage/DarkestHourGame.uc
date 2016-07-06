@@ -5,7 +5,7 @@
 //==============================================================================
 
 class DarkestHourGame extends ROTeamGame;
-/*
+
 var     DH_LevelInfo                DHLevelInfo;
 
 var     DHAmmoResupplyVolume        DHResupplyAreas[10];
@@ -48,6 +48,7 @@ static function string GetVersionString()
     return "v" $ default.Version.Major $ "." $ default.Version.Minor $ "." $ default.Version.Patch;
 }
 
+/*
 // Overridden to make new clamp of MaxPlayers
 event InitGame(string Options, out string Error)
 {
