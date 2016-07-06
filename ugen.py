@@ -9,10 +9,10 @@ class xuccparser():
         self.template_parameters = []
         self.template_arguments = []
         self.classname = ''
+        self.indentation = 0
 
     def compile(self, s, template_parameters=[]):
         self.template_parameters = template_parameters
-
         self.ast = parser.parse(s)
 
         # determine classname from AST
@@ -22,21 +22,21 @@ class xuccparser():
 
 xucc = xuccparser()
 
-        # for generic_type in self.generic_types:
-        #     template_parameters = []
-        #     garbage, identifier, template_arguments = generic_type
-        #     template_arguments = [render(q) for q in template_arguments]
-        #     #print template_arguments
-        #     classname = identifier[1]
+# for generic_type in self.generic_types:
+#     template_parameters = []
+#     garbage, identifier, template_arguments = generic_type
+#     template_arguments = [render(q) for q in template_arguments]
+#     #print template_arguments
+#     classname = identifier[1]
 
-        #     if len(template_arguments) > 0:
-        #         classname = '_'.join([classname, '_'.join(template_arguments)])
+#     if len(template_arguments) > 0:
+#         classname = '_'.join([classname, '_'.join(template_arguments)])
 
-        #     if identifier[1] not in asts.keys():
-        #         raise Exception('Class \'{}\' cannot be found.'.format(identifier[1]))
-        #     contents = render(asts[identifier[1]])
+#     if identifier[1] not in asts.keys():
+#         raise Exception('Class \'{}\' cannot be found.'.format(identifier[1]))
+#     contents = render(asts[identifier[1]])
 
-        #     print contents
+#     print contents
 
 
 def r_string_parameterized(p):
@@ -48,7 +48,7 @@ def r_function_modifiers(p):
 
 
 def r_if_statement(p):
-    return 'if ({})\n{{\n{}\n}}'.format(render(p[1]), render(p[2]), render(p[3]))
+    return 'if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
 
 
 def r_pre_unary_operation(p):
@@ -64,17 +64,18 @@ def r_unary_operation(p):
 
 
 def r_for_statement(p):
+    print p[2]
     return 'for ({}; {}; {})\n{{\n{}\n}}'.format(render(p[1]), render(p[2]), render(p[3]), render(p[4]))
 
 
 def r_binary_operation(p):
-    return '{} {} {}'.format(render(p[2]), render(p[1]), render(p[3]))
+    return ' '.join([render(p[2]), render(p[1]), render(p[3])])
 
 
 def r_return_statement(p):
     if p[1] is None:
-        return 'return;'
-    return 'return %s;' % render(p[1])
+        return 'return'
+    return 'return %s' % render(p[1])
 
 
 def r_number(p):
@@ -106,15 +107,18 @@ def r_statements(p):
 
 
 def r_function_body(p):
-    return '{{\n{0}{1}\n}}'.format(render(p[1]), render(p[2]))
+    s = '\n\n'.join([render(p[1]), render(p[2])]).strip()
+    return '{\n%s\n}' % s
 
 
 def r_local_declaration(p):
-    return 'local {type} {identifier};'.format(type=render(p[1]), identifier=render(p[2]))
+    return 'local %s %s;' % (render(p[1]), render(p[2]))
 
 
 def r_local_declarations(p):
-    return '\n'.join(render(q) for q in p[1:])
+    if p[1] is None:
+        return ''
+    return '\n'.join(render(q) for q in p[1])
 
 
 def r_var_name(p):
@@ -133,7 +137,7 @@ def r_arraycount(p):
 
 
 def r_var_names(p):
-    return ', '.join(p[1])
+    return ', '.join(render(p[1]))
 
 
 def r_var_declaration(p):
@@ -248,8 +252,16 @@ def r_vect(p):
     return 'vect(%s, %s, %s)' % tuple(map(render, p[1:4]))
 
 
+def r_codeline(p):
+    return '%s;' % render(p[1])
+
+
 def r_start(p):
     return '\n\n'.join(render(q) for q in p[1])
+
+
+def r_break_statement(p):
+    return 'break'
 
 
 def render(p):

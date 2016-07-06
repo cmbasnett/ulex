@@ -1,7 +1,5 @@
 from ply import yacc
-from lux import tokens, lexer
-import os
-import pprint
+from lux import tokens
 
 start = 'start'
 
@@ -60,6 +58,7 @@ def p_vect(p):
 
 def p_arraycount(p):
     'arraycount : ARRAYCOUNT LPAREN expression RPAREN'
+    print 'yeeeaaaaaa' * 10
     p[0] = ('arraycount', p[3])
 
 
@@ -190,6 +189,7 @@ def p_literal(p):
                | name_literal
                | number
                | vect
+               | arraycount
                | boolean_literal
                | NONE'''
     p[0] = p[1]
@@ -460,8 +460,7 @@ def p_dependson(p):
 
 def p_number(p):
     '''number : INTEGER
-              | UFLOAT
-              | arraycount'''
+              | UFLOAT'''
     p[0] = ('number', p[1])
 
 
@@ -745,7 +744,7 @@ def p_start(p):
 
 def p_break_statement(p):
     'break_statement : BREAK'
-    p[0] = ('break_statement')
+    p[0] = ('break_statement', p[1])
 
 
 def p_continue_statement(p):
@@ -757,8 +756,13 @@ def p_error(p):
     raise SyntaxError((p.lexer.lineno, p))
 
 
+def p_codeline(p):
+    '''codeline : simple_statement SEMICOLON'''
+    p[0] = ('codeline', p[1])
+
+
 def p_statement(p):
-    '''statement : simple_statement SEMICOLON
+    '''statement : codeline
                  | compound_statement'''
     p[0] = p[1]
 
