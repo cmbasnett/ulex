@@ -325,6 +325,8 @@ function PostBeginPlay()
     {
         GRI.AxisVictoryMusicIndex = Rand(SoundGroup(DHLevelInfo.AxisWinsMusic).Sounds.Length - 1);
     }
+
+    return none;
 }
 
 /*

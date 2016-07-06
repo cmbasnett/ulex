@@ -72,7 +72,9 @@ def r_binary_operation(p):
 
 
 def r_return_statement(p):
-    return 'return {};'.format(render(p[1]))
+    if p[1] is None:
+        return 'return;'
+    return 'return %s;' % render(p[1])
 
 
 def r_number(p):
@@ -124,6 +126,10 @@ def r_var_name(p):
 
 def r_array(p):
     return 'array<{}>'.format(render(p[1]))
+
+
+def r_arraycount(p):
+    return 'arraycount(%s)' % render(p[1])
 
 
 def r_var_names(p):
@@ -239,7 +245,7 @@ def r_foreach_statement(p):
 
 
 def r_vect(p):
-    return str(p)
+    return 'vect(%s, %s, %s)' % tuple(map(render, p[1:4]))
 
 
 def r_start(p):
