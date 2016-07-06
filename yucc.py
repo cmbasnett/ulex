@@ -72,6 +72,7 @@ def p_allocation_1(p):
     'allocation : NEW REFERENCE'
     p[0] = ('allocation', p[2])
 
+
 def p_allocation_2(p):
     'allocation : NEW type LPAREN argument_list_or_empty RPAREN'
     p[0] = ('allocation', p[2], p[4])
@@ -140,6 +141,8 @@ def p_argument_list_2(p):
 def p_argument_list_or_empty(p):
     '''argument_list_or_empty : argument_list
                               | empty'''
+    if p[1] is None:
+        p[1] = []
     p[0] = ('argument_list', p[1])
 
 

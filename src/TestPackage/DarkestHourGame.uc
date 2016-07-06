@@ -48,7 +48,6 @@ static function string GetVersionString()
     return "v" $ default.Version.Major $ "." $ default.Version.Minor $ "." $ default.Version.Patch;
 }
 
-/*
 // Overridden to make new clamp of MaxPlayers
 event InitGame(string Options, out string Error)
 {
@@ -328,6 +327,7 @@ function PostBeginPlay()
     }
 }
 
+/*
 function CheckResupplyVolumes()
 {
     local DHGameReplicationInfo GRI;

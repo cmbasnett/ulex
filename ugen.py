@@ -135,7 +135,7 @@ def r_var_declaration(p):
 
 
 def r_function_declaration(p):
-    return '{} {} {} {}({})'.format(render(p[1]), render(p[4]), render(p[3]), render(p[2]), render(p[5]))
+    return '%s(%s)' % (' '.join(filter(None, [render(q) for q in (p[1], p[4], p[3], p[2])])), render(p[5]))
 
 
 def r_function_definition(p):
@@ -219,12 +219,31 @@ def r_struct_var_declaration(p):
     return 'var %s %s;' % (render(p[1]), render(p[2]))
 
 
-def r_start(p):
-    return '\n\n'.join(render(q) for q in p[1])
-
-
 def r_default(p):
     return 'default.%s' % render(p[1])
+
+
+def r_super_call(p):
+    if p[1] is None:
+        return 'super.%s' % render(p[2])
+    else:
+        return 'super(%s).%s' % (render(p[1]), render(p[2]))
+
+
+def r_reference(p):
+    return render(p[1])
+
+
+def r_foreach_statement(p):
+    return 'foreach %s(%s)\n{\n%s\n}' % (render(p[1]), render(p[2]), render(p[3]))
+
+
+def r_vect(p):
+    return str(p)
+
+
+def r_start(p):
+    return '\n\n'.join(render(q) for q in p[1])
 
 
 def render(p):
