@@ -64,7 +64,6 @@ def r_unary_operation(p):
 
 
 def r_for_statement(p):
-    print p[2]
     return 'for ({}; {}; {})\n{{\n{}\n}}'.format(render(p[1]), render(p[2]), render(p[3]), render(p[4]))
 
 
@@ -136,8 +135,8 @@ def r_arraycount(p):
     return 'arraycount(%s)' % render(p[1])
 
 
-def r_var_names(p):
-    return ', '.join(render(p[1]))
+def r_var_name_list(p):
+    return ', '.join(render(q) for q in p[1])
 
 
 def r_var_declaration(p):
@@ -262,6 +261,46 @@ def r_start(p):
 
 def r_break_statement(p):
     return 'break'
+
+
+def r_continue_statement(p):
+    return 'continue'
+
+
+def r_switch_statement(p):
+    return 'switch (%s)\n{\n%s\n}' % (render(p[1]), '\n'.join(render(q) for q in p[2]))
+
+
+def r_switch_case(p):
+    return 'case %s:\n%s' % (render(p[1]), render(p[2]))
+
+
+def r_do_statement(p):
+    s = 'do\n{\n%s\n}' % render(p[1])
+    if p[2] is not None:
+        s = ' '.join([s, 'until (%s);' % render(p[2])])
+    return s
+
+
+def r_static_call(p):
+    return '%s.static.%s' % (render(p[1]), render(p[2]))
+
+
+def r_state_definition(p):
+    return 'state %s\n{\n%s\n}' % (render(p[2]), render(p[3]))
+
+
+def r_while_statement(p):
+    return 'while (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
+
+
+def r_global_call(p):
+    return 'global.%s' % render(p[1])
+
+
+def r_allocation(p):
+    pprint.pprint(p)
+    return 'new %s' % render(p[1])
 
 
 def render(p):

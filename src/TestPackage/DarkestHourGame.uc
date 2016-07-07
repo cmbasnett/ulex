@@ -43,6 +43,8 @@ var struct VersionInfo
     var int Patch;
 } Version;
 
+
+
 static function string GetVersionString()
 {
     return "v" $ default.Version.Major $ "." $ default.Version.Minor $ "." $ default.Version.Patch;
@@ -329,7 +331,6 @@ function PostBeginPlay()
     return none;
 }
 
-/*
 function CheckResupplyVolumes()
 {
     local DHGameReplicationInfo GRI;
@@ -2107,6 +2108,7 @@ state RoundInPlay
     }
 }
 
+/*
 state ResetGameCountdown
 {
     // Modified to replace ROArtillerySpawner with DHArtillerySpawner

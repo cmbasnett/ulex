@@ -4,5 +4,5 @@ var ArrayList<int> Integers;
 
 function Test()
 {
-    Integers = new ArrayList<string>(3);
+    Integers = new ArrayList<string>;
 }

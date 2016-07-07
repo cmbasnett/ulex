@@ -1,5 +1,6 @@
 from ply import yacc
 from lux import tokens
+import pprint
 
 start = 'start'
 
@@ -58,7 +59,6 @@ def p_vect(p):
 
 def p_arraycount(p):
     'arraycount : ARRAYCOUNT LPAREN expression RPAREN'
-    print 'yeeeaaaaaa' * 10
     p[0] = ('arraycount', p[3])
 
 
@@ -73,8 +73,14 @@ def p_allocation_1(p):
 
 
 def p_allocation_2(p):
-    'allocation : NEW type LPAREN argument_list_or_empty RPAREN'
-    p[0] = ('allocation', p[2], p[4])
+    'allocation : NEW generic_type'
+    p[0] = ('allocation', generic_type_to_reference(p[2]))
+
+
+def generic_type_to_reference(p):
+    assert(p[0] == 'generic_type')
+    s = '_'.join([p[1][1], '_'.join([q[1][1] for q in p[2]])])
+    return ('reference', 'class\'%s\'' % s)
 
 
 def p_binary_operation(p):
@@ -121,6 +127,7 @@ def p_primary(p):
                | subscription
                | super_call
                | static_call
+               | global_call
                | call
                | unary_operation
                | binary_operation'''
@@ -227,9 +234,9 @@ def p_var_names_2(p):
     p[0] = p[1] + [p[3]]
 
 
-def p_var_names(p):
-    'var_names : var_names'
-    p[0] = ('var_names', p[1])
+def p_var_name_list(p):
+    'var_name_list : var_names'
+    p[0] = ('var_name_list', p[1])
 
 
 def p_var_name(p):
@@ -282,12 +289,12 @@ def p_var_modifiers_or_empty(p):
 
 
 def p_var_declaration(p):
-    'var_declaration : VAR paren_id_or_empty var_modifiers_or_empty var_type var_names SEMICOLON'
+    'var_declaration : VAR paren_id_or_empty var_modifiers_or_empty var_type var_name_list SEMICOLON'
     p[0] = ('var_declaration', p[4], p[5], p[3], p[2])
 
 
 def p_struct_var_declaration(p):
-    'struct_var_declaration : VAR type var_names SEMICOLON'
+    'struct_var_declaration : VAR type var_name_list SEMICOLON'
     p[0] = ('struct_var_declaration', p[2], p[3])
 
 
@@ -576,7 +583,7 @@ def p_function_arguments_or_empty(p):
 
 
 def p_local_declaration(p):
-    'local_declaration : LOCAL type var_names SEMICOLON'
+    'local_declaration : LOCAL type var_name_list SEMICOLON'
     p[0] = ('local_declaration', p[2], p[3])
 
 
@@ -749,7 +756,7 @@ def p_break_statement(p):
 
 def p_continue_statement(p):
     'continue_statement : CONTINUE'
-    p[0] = ('continue_statement')
+    p[0] = ('continue_statement', p[1])
 
 
 def p_error(p):
@@ -806,7 +813,7 @@ def p_for_statement(p):
 def p_while_statement(p):
     '''while_statement : WHILE LPAREN expression RPAREN statement
                        | WHILE LPAREN expression RPAREN statement_block'''
-    p[0] = ('while-statement', p[3], p[5])
+    p[0] = ('while_statement', p[3], p[5])
 
 
 def p_elif_statement(p):
@@ -892,9 +899,9 @@ def p_super_call(p):
     p[0] = ('super_call', p[2], p[4])
 
 
-#def p_cast(p):
-#    'cast : type LPAREN expression RPAREN'
-#    p[0] = ('cast', p[1], p[3])
+def p_global_call(p):
+    'global_call : GLOBAL PERIOD call'
+    p[0] = ('global_call', p[3])
 
 
 def p_static_call(p):
@@ -933,9 +940,14 @@ def p_switch_cases_or_empty(p):
     p[0] = p[1]
 
 
-def p_do_statement(p):
+def p_do_statement_1(p):
     'do_statement : DO statement_block'
-    p[0] = ('do_statement', p[2])
+    p[0] = ('do_statement', p[2], None)
+
+
+def p_do_statement_2(p):
+    'do_statement : DO statement_block UNTIL LPAREN expression RPAREN SEMICOLON'
+    p[0] = ('do_statement', p[2], p[5])
 
 
 def p_state_modifier(p):
