@@ -1,4 +1,3 @@
 from ugen import xucc
 
-#xucc.compile(open('src/TestPackage/DarkestHourGame.uc').read())
-xucc.compile(open('src/TestPackage/ArrayList.uc').read())
+xucc.compile(open('C:\Users\colin_000\Documents\GitHub\DarkestHour/DH_Engine/Classes/DarkestHourGame.uc').read())

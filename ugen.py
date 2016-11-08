@@ -1,5 +1,4 @@
 from yucc import parser
-import pprint
 
 
 class xuccparser():
@@ -14,29 +13,22 @@ class xuccparser():
     def compile(self, s, template_parameters=[]):
         self.template_parameters = template_parameters
         self.ast = parser.parse(s)
+        self.classname = self.ast[1][0][1][1]
+        s = render(self.ast)
+        with open('okay.uc', 'w+') as f:
+            f.write(s)
 
-        # determine classname from AST
-
-        #pprint.pprint(self.ast)
-        print render(self.ast)
 
 xucc = xuccparser()
 
-# for generic_type in self.generic_types:
-#     template_parameters = []
-#     garbage, identifier, template_arguments = generic_type
-#     template_arguments = [render(q) for q in template_arguments]
-#     #print template_arguments
-#     classname = identifier[1]
 
-#     if len(template_arguments) > 0:
-#         classname = '_'.join([classname, '_'.join(template_arguments)])
+def r_indentation():
+    global xucc
+    return '    ' * xucc.indentation
 
-#     if identifier[1] not in asts.keys():
-#         raise Exception('Class \'{}\' cannot be found.'.format(identifier[1]))
-#     contents = render(asts[identifier[1]])
 
-#     print contents
+def r_constructor(p):
+    return 'function %s ctor(%s)\n%s' % (xucc.classname, render(p[1]), render(p[2]))
 
 
 def r_string_parameterized(p):
@@ -102,6 +94,8 @@ def r_subscription(p):
 
 
 def r_statements(p):
+    if p[1] is None:
+        return ''
     return '\n'.join(render(q) for q in p[1])
 
 
@@ -111,7 +105,7 @@ def r_function_body(p):
 
 
 def r_local_declaration(p):
-    return 'local %s %s;' % (render(p[1]), render(p[2]))
+    return  'local %s %s;' % (render(p[1]), render(p[2]))
 
 
 def r_local_declarations(p):
@@ -154,7 +148,6 @@ def r_function_definition(p):
         return '{}\n{}'.format(render(p[1]), render(p[2]))
 
 
-#TODO: modifiers
 def r_function_argument(p):
     return '{} {}'.format(render(p[1]), render(p[3]))
 
@@ -200,10 +193,44 @@ def r_identifier(p):
         return s
 
 
+def r_defaultproperties(p):
+    return 'defaultproperties\n{\n%s\n}' % '\n'.join(render(k) for k in p[1])
+
+
+def r_defaultproperties_assignment(p):
+    return '%s=%s' % (render(p[1]), render(p[2]))
+
+
+def r_defaultproperties_key(p):
+    if p[2] is not None:
+        return '%s(%s)' % (render(p[1]), p[2])
+    else:
+        return render(p[1])
+
+
+def r_defaultproperties_object(p):
+    return 'Begin Object Class=%s Name=%s\n%s\nEnd Object' % (render(p[1]), render(p[2]), '\n'.join(render(k) for k in p[3]))
+
+
 def r_class_declaration(p):
     global xucc
-    s = 'class {} extends {}\n{};'.format(xucc.classname, render(p[2]), render(p[3]))
-    return s
+    return 'class {} extends {}\n{};'.format(xucc.classname, render(p[2]), render(p[3]))
+
+
+def r_struct_definition(p):
+    return '%s;' % render(p[1])
+
+
+def r_enum_values(p):
+    return ',\n'.join(p[1])
+
+
+def r_enum_definition(p):
+    return '%s;' % render(p[1])
+
+
+def r_enum_declaration(p):
+    return 'enum %s\n{\n%s\n}' % (p[1], render(p[2]))
 
 
 def r_const_declaration(p):
@@ -230,6 +257,10 @@ def r_struct_var_declaration(p):
 
 def r_default(p):
     return 'default.%s' % render(p[1])
+
+
+def r_default_case(p):
+    return 'default:'
 
 
 def r_super_call(p):
@@ -299,8 +330,11 @@ def r_global_call(p):
 
 
 def r_allocation(p):
-    pprint.pprint(p)
     return 'new %s' % render(p[1])
+
+
+def r_construction(p):
+    return '(new %s).ctor(%s)' % (render(p[1]), render(p[2]))
 
 
 def render(p):
@@ -313,7 +347,6 @@ def render(p):
         return p
     elif type(p) is list:
         for q in p:
-            #pprint(q)
             u = eval('r_{}'.format(q[0]))
             s += u(q)
     elif type(p) is tuple:

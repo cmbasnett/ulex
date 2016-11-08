@@ -62,24 +62,27 @@ def p_arraycount(p):
     p[0] = ('arraycount', p[3])
 
 
-def p_default(p):
-    'default : DEFAULT PERIOD identifier'
-    p[0] = ('default', p[3])
-
-
 def p_allocation_1(p):
     'allocation : NEW REFERENCE'
     p[0] = ('allocation', p[2])
 
 
-def p_allocation_2(p):
-    'allocation : NEW generic_type'
-    p[0] = ('allocation', generic_type_to_reference(p[2]))
+def p_construction_1(p):
+    'construction : NEW type LPAREN argument_list_or_empty RPAREN'
+    p[0] = ('construction', generic_type_to_reference(p[2]), p[4])
+
+
+def p_construction_2(p):
+    'construction : NEW generic_type LPAREN argument_list_or_empty RPAREN'
+    p[0] = ('construction', generic_type_to_reference(p[2]), p[4])
 
 
 def generic_type_to_reference(p):
-    assert(p[0] == 'generic_type')
-    s = '_'.join([p[1][1], '_'.join([q[1][1] for q in p[2]])])
+    assert(p[0] in ('generic_type', 'identifier'))
+    if p[0] == 'generic_type':
+        s = '_'.join([p[1][1], '_'.join([q[1][1] for q in p[2]])])
+    else:
+        s = p[1]
     return ('reference', 'class\'%s\'' % s)
 
 
@@ -92,6 +95,7 @@ def p_identifier(p):
     '''identifier : ID
                   | INIT
                   | CLASS
+                  | OBJECT
                   | primitive_type
                   | SELF'''
     p[0] = ('identifier', p[1])
@@ -106,7 +110,8 @@ def p_atom(p):
     '''atom : identifier
             | literal
             | reference
-            | allocation'''
+            | allocation
+            | construction'''
     p[0] = p[1]
 
 
@@ -316,6 +321,7 @@ def p_struct_var_declarations_or_empty(p):
 
 def p_generic_type(p):
     'generic_type : identifier LANGLE type_list RANGLE'
+    # TODO: notify that generic type has been encountered
     p[0] = ('generic_type', p[1], p[3])
 
 
@@ -348,7 +354,8 @@ def p_class_type(p):
 
 def p_var_type(p):
     '''var_type : type
-                | struct_declaration'''
+                | struct_declaration
+                | enum_declaration'''
     p[0] = p[1]
 
 
@@ -367,6 +374,26 @@ def p_type_or_empty(p):
     p[0] = p[1]
 
 
+def p_id_list_1(p):
+    'id_list : ID'
+    p[0] = [p[1]]
+
+
+def p_id_list_2(p):
+    'id_list : id_list COMMA ID'
+    p[0] = p[1] + [p[3]]
+
+
+def p_id_list_3(p):
+    'id_list : id_list COMMA empty'
+    p[0] = p[1]
+
+
+def p_enum_values(p):
+    'enum_values : id_list'
+    p[0] = ('enum_values', p[1])
+
+
 def p_identifier_list_1(p):
     'identifier_list : identifier'
     p[0] = [p[1]]
@@ -375,6 +402,7 @@ def p_identifier_list_1(p):
 def p_identifier_list_2(p):
     'identifier_list : identifier_list COMMA identifier'
     p[0] = p[1] + [p[3]]
+
 
 def p_identifier_list_or_empty(p):
     '''identifier_list_or_empty : identifier_list
@@ -559,8 +587,8 @@ def p_function_argument_modifiers_or_empty(p):
 
 
 def p_function_argument(p):
-    '''function_argument : function_argument_modifiers_or_empty type identifier'''
-    p[0] = ('function_argument', p[2], p[1], p[3])
+    '''function_argument : function_argument_modifiers_or_empty type identifier arrayindex_or_empty'''
+    p[0] = ('function_argument', p[2], p[1], p[3], p[4])
 
 
 def p_function_arguments_1(p):
@@ -627,11 +655,23 @@ def p_function_definition(p):
         raise SyntaxError
 
 
+def p_struct_definition(p):
+    '''struct_definition : struct_declaration SEMICOLON'''
+    p[0] = ('struct_definition', p[1])
+
+
+def p_enum_definition(p):
+    '''enum_definition : enum_declaration SEMICOLON'''
+    p[0] = ('enum_definition', p[1])
+
+
 def p_declaration(p):
     '''declaration : const_declaration
                    | function_definition
                    | constructor
                    | var_declaration
+                   | struct_definition
+                   | enum_definition
                    | state_definition'''
     p[0] = p[1]
 
@@ -652,18 +692,53 @@ def p_declarations_or_empty(p):
     p[0] = ('declarations', p[1])
 
 
-#def p_defaultproperties_object(p):
-    #'defaultproperties_object : BEGIN OBJECT CLASS ASSIGN type NAME ASSIGN ID defaultproperties_object_assignments_or_empty END OBJECT'
+def p_defaultproperties_object(p):
+    'defaultproperties_object : BEGIN OBJECT CLASS ASSIGN type NAME ASSIGN ID defaultproperties_assignments_or_empty END OBJECT'
+    p[0] = ('defaultproperties_object', p[5], p[8], p[9])
 
 
-def p_defaultproperties_assignment_value(p):
-    '''defaultproperties_assignment_value : literal'''
+def p_defaultproperties_or_empty(p):
+    '''defaultproperties_or_empty : defaultproperties
+                                  | empty'''
     p[0] = p[1]
 
 
+def p_defaultproperties_assignment_value(p):
+    '''defaultproperties_assignment_value : literal
+                                          | reference
+                                          | identifier'''
+    p[0] = p[1]
+
+
+def p_defaultproperties_declaration(p):
+    '''defaultproperties_declaration : defaultproperties_assignment
+                                     | defaultproperties_object'''
+    p[0] = p[1]
+
+
+def p_defaultproperties_declarations_1(p):
+    '''defaultproperties_declarations : defaultproperties_declaration'''
+    p[0] = [p[1]]
+
+
+def p_defaultproperties_declarations_2(p):
+    '''defaultproperties_declarations : defaultproperties_declarations defaultproperties_declaration'''
+    p[0] = p[1] + [p[2]]
+
+
+def p_defaultproperties_key_1(p):
+    '''defaultproperties_key : var_name'''
+    p[0] = ('defaultproperties_key', p[1], None)
+
+
+def p_defaultproperties_key_2(p):
+    '''defaultproperties_key : var_name LPAREN INTEGER RPAREN'''
+    p[0] = ('defaultproperties_key', p[1], p[3])
+
+
 def p_defaultproperties_assignment(p):
-    'defaultproperties_assignment : var_name ASSIGN defaultproperties_assignment_value'
-    p[0] = ('defaultproperties-assignment', p[1], p[3])
+    'defaultproperties_assignment : defaultproperties_key ASSIGN defaultproperties_assignment_value'
+    p[0] = ('defaultproperties_assignment', p[1], p[3])
 
 
 def p_defaultproperties_assignments_1(p):
@@ -683,7 +758,7 @@ def p_defaultproperties_assignments_or_empty(p):
 
 
 def p_defaultproperties(p):
-    'defaultproperties : DEFAULTPROPERTIES LCURLY defaultproperties_assignments_or_empty RCURLY'
+    'defaultproperties : DEFAULTPROPERTIES LCURLY defaultproperties_declarations RCURLY'
     p[0] = ('defaultproperties', p[3])
 
 
@@ -745,8 +820,8 @@ def p_return_statement(p):
 
 
 def p_start(p):
-    'start : class_declaration declarations_or_empty'
-    p[0] = ('start', [p[1]] + [p[2]])
+    'start : class_declaration declarations_or_empty defaultproperties_or_empty'
+    p[0] = ('start', [p[1]] + [p[2]] + [p[3]])
 
 
 def p_break_statement(p):
@@ -839,6 +914,11 @@ def p_else_statement(p):
     p[0] = p[2]
 
 
+def p_enum_declaration(p):
+    'enum_declaration : ENUM ID LCURLY enum_values RCURLY'
+    p[0] = ('enum_declaration', p[2], p[4])
+
+
 def p_else_statement_or_empty(p):
     '''else_statement_or_empty : else_statement
                                | empty'''
@@ -910,7 +990,7 @@ def p_static_call(p):
 
 
 def p_switch_statement(p):
-    'switch_statement : SWITCH LPAREN expression RPAREN LCURLY switch_cases RCURLY'
+    'switch_statement : SWITCH LPAREN expression RPAREN LCURLY switch_cases_or_empty RCURLY'
     p[0] = ('switch_statement', p[3], p[6])
 
 
@@ -920,8 +1000,8 @@ def p_switch_case_1(p):
 
 
 def p_switch_case_2(p):
-    'switch_case : DEFAULT COLON statements_or_empty'
-    p[0] = ('default_case', p[3])
+    'switch_case : DEFAULT_LABEL statements_or_empty'
+    p[0] = ('default_case', p[2])
 
 
 def p_switch_cases_1(p):
@@ -938,6 +1018,11 @@ def p_switch_cases_or_empty(p):
     '''switch_cases_or_empty : switch_cases
                              | empty'''
     p[0] = p[1]
+
+
+def p_default(p):
+    'default : DEFAULT identifier'
+    p[0] = ('default', p[2])
 
 
 def p_do_statement_1(p):

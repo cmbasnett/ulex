@@ -109,7 +109,6 @@ reserved = {
     'collapsecategories': 'COLLAPSECATEGORIES',
     'constructor': 'CONSTRUCTOR',
     'continue': 'CONTINUE',
-    'default': 'DEFAULT',
     'defaultproperties': 'DEFAULTPROPERTIES',
     'delegate': 'DELEGATE',
     'do': 'DO',
@@ -149,6 +148,7 @@ reserved = {
     'new': 'NEW',
     'none': 'NONE',
     'nousercreate': 'NOUSERCREATE',
+    'object': 'OBJECT',
     'operator': 'OPERATOR',
     'optional': 'OPTIONAL',
     'out': 'OUT',
@@ -179,14 +179,14 @@ reserved = {
     'while': 'WHILE',
     # the following are keywords added by ulex
     'typeof': 'TYPEOF',
-    #'sizeof': 'SIZEOF',
-    #'typedef': 'TYPEDEF'
 }
 
 reserved.update(class_modifiers)
 reserved.update(variable_modifiers)
 
 tokens = [
+    'DEFAULT',
+    'DEFAULT_LABEL',
     'COMMENT',
     'UNAME',
     'INTEGER',
@@ -237,8 +237,8 @@ tokens = [
     'LEQUAL',
     'GEQUAL',
     'IASSIGN',
-    'DASSIGN'
-    ] + list(reserved.values())
+    'DASSIGN',
+] + list(reserved.values())
 
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
@@ -281,6 +281,16 @@ t_LEQUAL = r'\<\='
 t_GEQUAL = r'>='
 t_IASSIGN = r'\+='
 t_DASSIGN = r'-='
+
+
+def t_DEFAULT(t):
+    r'default\s*\.'
+    return t
+
+
+def t_DEFAULT_LABEL(t):
+    r'default\s*:'
+    return t
 
 
 def t_DIRECTIVE(t):
@@ -343,5 +353,6 @@ def t_newline(t):
 
 def t_error(t):
     pass
+
 
 lexer = lex.lex()
