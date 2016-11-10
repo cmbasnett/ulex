@@ -24,7 +24,7 @@ xucc = xuccparser()
 
 def r_indentation():
     global xucc
-    return '    ' * xucc.indentation
+    return '  ' * xucc.indentation
 
 
 def r_constructor(p):
@@ -105,7 +105,7 @@ def r_function_body(p):
 
 
 def r_local_declaration(p):
-    return  'local %s %s;' % (render(p[1]), render(p[2]))
+    return 'local %s %s;' % (render(p[1]), render(p[2]))
 
 
 def r_local_declarations(p):
@@ -185,7 +185,7 @@ def r_class_modifiers(p):
 def r_identifier(p):
     global xucc
     s = render(p[1])
-    #TODO: do a look-up for template parameters, in scope
+    # TODO: do a look-up for template parameters, in scope
     try:
         i = xucc.template_parameters.index(s)
         return render(xucc.template_arguments[i])
@@ -215,6 +215,10 @@ def r_defaultproperties_object(p):
 def r_class_declaration(p):
     global xucc
     return 'class {} extends {}\n{};'.format(xucc.classname, render(p[2]), render(p[3]))
+
+
+def r_defaultproperties_object_construction(p):
+    return '(%s)' % ','.join(render(k) for k in p[1])
 
 
 def r_struct_definition(p):

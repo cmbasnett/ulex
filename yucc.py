@@ -110,6 +110,7 @@ def p_atom(p):
     '''atom : identifier
             | literal
             | reference
+            | class_type
             | allocation
             | construction'''
     p[0] = p[1]
@@ -697,6 +698,10 @@ def p_defaultproperties_object(p):
     p[0] = ('defaultproperties_object', p[5], p[8], p[9])
 
 
+def p_defaultproperties_object_arguments(p):
+    '''defaultproperties_object_arguments : LPAREN defaultproperties_assignments RPAREN'''
+    p[0] = ('defaultproperties_object_construction', p[2])
+
 def p_defaultproperties_or_empty(p):
     '''defaultproperties_or_empty : defaultproperties
                                   | empty'''
@@ -706,7 +711,8 @@ def p_defaultproperties_or_empty(p):
 def p_defaultproperties_assignment_value(p):
     '''defaultproperties_assignment_value : literal
                                           | reference
-                                          | identifier'''
+                                          | identifier
+                                          | defaultproperties_object_arguments'''
     p[0] = p[1]
 
 
@@ -736,25 +742,25 @@ def p_defaultproperties_key_2(p):
     p[0] = ('defaultproperties_key', p[1], p[3])
 
 
-def p_defaultproperties_assignment(p):
-    'defaultproperties_assignment : defaultproperties_key ASSIGN defaultproperties_assignment_value'
-    p[0] = ('defaultproperties_assignment', p[1], p[3])
-
-
 def p_defaultproperties_assignments_1(p):
-    'defaultproperties_assignments : defaultproperties_assignment'
+    '''defaultproperties_assignments : defaultproperties_assignment'''
     p[0] = [p[1]]
 
 
 def p_defaultproperties_assignments_2(p):
-    'defaultproperties_assignments : defaultproperties_assignments defaultproperties_assignment'
-    p[0] = p[1] + [p[2]]
+    '''defaultproperties_assignments : defaultproperties_assignments COMMA defaultproperties_assignment'''
+    p[0] = p[1] + [p[3]]
 
 
 def p_defaultproperties_assignments_or_empty(p):
     '''defaultproperties_assignments_or_empty : defaultproperties_assignments
                                               | empty'''
     p[0] = p[1]
+
+
+def p_defaultproperties_assignment(p):
+    'defaultproperties_assignment : defaultproperties_key ASSIGN defaultproperties_assignment_value'
+    p[0] = ('defaultproperties_assignment', p[1], p[3])
 
 
 def p_defaultproperties(p):
