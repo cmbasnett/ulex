@@ -1,4 +1,12 @@
 from ugen import xucc
+import os
 
-xucc.compile(open('C:\Users\colin_000\Documents\GitHub\DarkestHour/DH_Engine/Classes/DarkestHourGame.uc').read())
+root = 'C:\Users\colin_000\Documents\GitHub\DarkestHour/DH_Engine/Classes'
+
+for filename in os.listdir(root):
+    print filename
+    xucc.compile(open(os.path.join(root, filename)).read())
+    print 'done'
+
+# xucc.compile(open(os.path.join(root, 'DHAntiVehicleProjectile.uc')).read())
 # xucc.compile(open('src/TestPackage/TestClass.uc').read())

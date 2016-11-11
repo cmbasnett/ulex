@@ -46,8 +46,11 @@ def p_binary_operator(p):
                        | SCONCAT
                        | SCONCATSPACE
                        | OR
-                       | IASSIGN
-                       | DASSIGN
+                       | ADD_ASSIGN
+                       | SUBTRACT_ASSIGN
+                       | MULTIPLY_ASSIGN
+                       | DIVIDE_ASSIGN
+                       | DOT
                        | AND'''
     p[0] = p[1]
 
@@ -199,6 +202,7 @@ def p_boolean_literal(p):
 
 def p_literal(p):
     '''literal : string_literal
+               | string_parameterized
                | name_literal
                | number
                | vect
@@ -732,6 +736,12 @@ def p_defaultproperties_declarations_2(p):
     p[0] = p[1] + [p[2]]
 
 
+def p_defaultproperties_declarations_or_empty(p):
+    '''defaultproperties_declarations_or_empty : defaultproperties_declarations
+                                               | empty'''
+    p[0] = p[1]
+
+
 def p_defaultproperties_key_1(p):
     '''defaultproperties_key : var_name'''
     p[0] = ('defaultproperties_key', p[1], None)
@@ -764,7 +774,7 @@ def p_defaultproperties_assignment(p):
 
 
 def p_defaultproperties(p):
-    'defaultproperties : DEFAULTPROPERTIES LCURLY defaultproperties_declarations RCURLY'
+    'defaultproperties : DEFAULTPROPERTIES LCURLY defaultproperties_declarations_or_empty RCURLY'
     p[0] = ('defaultproperties', p[3])
 
 
@@ -781,7 +791,7 @@ def p_function_body(p):
 
 def p_expression_1(p):
     'expression : LPAREN expression RPAREN'
-    p[0] = p[2]
+    p[0] = ('expression_parenthesized', p[2])
 
 
 def p_expression_2(p):

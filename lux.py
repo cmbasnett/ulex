@@ -112,6 +112,7 @@ reserved = {
     'defaultproperties': 'DEFAULTPROPERTIES',
     'delegate': 'DELEGATE',
     'do': 'DO',
+    'dot': 'DOT',
     'editinlinenotify': 'EDITINLINENOTIFY',
     'editinlineuse': 'EDITINLINEUSE',
     'else': 'ELSE',
@@ -236,8 +237,10 @@ tokens = [
     'ID',
     'LEQUAL',
     'GEQUAL',
-    'IASSIGN',
-    'DASSIGN',
+    'ADD_ASSIGN',
+    'SUBTRACT_ASSIGN',
+    'MULTIPLY_ASSIGN',
+    'DIVIDE_ASSIGN'
 ] + list(reserved.values())
 
 t_LPAREN = r'\('
@@ -261,6 +264,10 @@ t_OR = r'\|\|'
 t_NOT = r'!'
 t_INCREMENT = r'\+\+'
 t_DECREMENT = r'\-\-'
+t_ADD_ASSIGN = r'\+\='
+t_SUBTRACT_ASSIGN = r'\-\='
+t_MULTIPLY_ASSIGN = r'\*\='
+t_DIVIDE_ASSIGN = r'\/\='
 t_ADD = r'\+'
 t_MULTIPLY = r'\*'
 t_AND = r'\&\&'
@@ -279,8 +286,6 @@ t_XOR = r'\^'
 t_BITWISE_NOT = r'~'
 t_LEQUAL = r'\<\='
 t_GEQUAL = r'>='
-t_IASSIGN = r'\+='
-t_DASSIGN = r'-='
 
 
 def t_DEFAULT(t):
@@ -314,6 +319,7 @@ def t_USTRING(t):
 
 def t_PSTRING(t):
     r'\@"((\\{2})*|(.*?[^\\](\\{2})*))"'
+    t.value = t.value[2:-1]
     return t
 
 

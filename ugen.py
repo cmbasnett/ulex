@@ -1,4 +1,5 @@
 from yucc import parser
+import re
 
 
 class xuccparser():
@@ -16,6 +17,7 @@ class xuccparser():
         self.classname = self.ast[1][0][1][1]
         s = render(self.ast)
         with open('okay.uc', 'w+') as f:
+            # print s
             f.write(s)
 
 
@@ -53,6 +55,11 @@ def r_post_unary_operation(p):
 
 def r_unary_operation(p):
     return '{}{}'.format(render(p[1]), render(p[2]))
+
+
+def r_string_parameterized(p):
+    s = '"' + re.sub('{(.+?)}', lambda x: '" $ %s $ "' % x.groups()[0], p[1]) + '"'
+    return s
 
 
 def r_for_statement(p):
@@ -148,6 +155,11 @@ def r_function_definition(p):
         return '{}\n{}'.format(render(p[1]), render(p[2]))
 
 
+def r_config(p):
+    print p[0]
+    return p[0]
+
+
 def r_function_argument(p):
     return '{} {}'.format(render(p[1]), render(p[3]))
 
@@ -157,6 +169,8 @@ def r_function_arguments(p):
 
 
 def r_declarations(p):
+    if p[1] is None:
+        return ''
     return '\n'.join(render(q) for q in p[1])
 
 
@@ -194,6 +208,8 @@ def r_identifier(p):
 
 
 def r_defaultproperties(p):
+    if p[1] is None:
+        return ''
     return 'defaultproperties\n{\n%s\n}' % '\n'.join(render(k) for k in p[1])
 
 
@@ -227,6 +243,10 @@ def r_struct_definition(p):
 
 def r_enum_values(p):
     return ',\n'.join(p[1])
+
+
+def r_expression_parenthesized(p):
+    return '(%s)' % render(p[1])
 
 
 def r_enum_definition(p):
