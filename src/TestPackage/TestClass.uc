@@ -1,16 +1,22 @@
-class TestClass extends Object;
+class TestClass extends Object
+    native
+    template(T);
 
-var ArrayList<int> Integers;
-var class<ROVehicle> A;
-
-function Okay()
+function T Okay()
 {
-    local class<ROVehicle> B;
+    Log(@"Okay {B.C} what {D.E}?");
 
-    B = class<ROVehicle>(A);
+    if (3 > 2)
+    {
+        
+    }
+
+    if (class'UUnits'.static.RadiansToDegrees(3).ABC > 90.0)
+    {
+    }
 }
 
-DefaultProperties
+defaultproperties
 {
     A=(A=30,B=40,C=(X=7,Y=1,Z=5))
 }

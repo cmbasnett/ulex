@@ -1,4 +1,5 @@
 from yucc import parser
+from lux import lexer
 import re
 
 
@@ -13,12 +14,15 @@ class xuccparser():
 
     def compile(self, s, template_parameters=[]):
         self.template_parameters = template_parameters
+        # TODO: set lineno?
+        lexer.lineno = 1
         self.ast = parser.parse(s)
         self.classname = self.ast[1][0][1][1]
         s = render(self.ast)
         with open('okay.uc', 'w+') as f:
             # print s
             f.write(s)
+        return s
 
 
 xucc = xuccparser()
@@ -171,7 +175,7 @@ def r_function_arguments(p):
 def r_declarations(p):
     if p[1] is None:
         return ''
-    return '\n'.join(render(q) for q in p[1])
+    return '\n\n'.join(render(q) for q in p[1])
 
 
 def r_identifier_list(p):

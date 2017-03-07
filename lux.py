@@ -280,12 +280,12 @@ t_SCONCATSPACE = r'@'
 t_DIVIDE = r'/'
 t_BITWISE_AND = r'\&'
 t_BITWISE_OR = r'\|'
-t_LEFT_SHIFT = r'<<'
-t_RIGHT_SHIFT = r'>>'
+t_LEFT_SHIFT = r'\<\<'
+t_RIGHT_SHIFT = r'\>\>'
 t_XOR = r'\^'
 t_BITWISE_NOT = r'~'
 t_LEQUAL = r'\<\='
-t_GEQUAL = r'>='
+t_GEQUAL = r'\>\='
 
 
 def t_DEFAULT(t):
@@ -361,4 +361,4 @@ def t_error(t):
     pass
 
 
-lexer = lex.lex()
+lexer = lex.lex(debug=True)

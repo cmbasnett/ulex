@@ -51,7 +51,9 @@ def p_binary_operator(p):
                        | MULTIPLY_ASSIGN
                        | DIVIDE_ASSIGN
                        | DOT
-                       | AND'''
+                       | AND
+                       | RIGHT_SHIFT
+                       | LEFT_SHIFT'''
     p[0] = p[1]
 
 
@@ -161,8 +163,14 @@ def p_argument_list_or_empty(p):
     p[0] = ('argument_list', p[1])
 
 
+def p_cast(p):
+    '''cast : type LPAREN expression RPAREN'''
+    p[0] = ('cast', p[1], p[3])
+
+
 def p_call(p):
-    '''call : primary LPAREN argument_list_or_empty RPAREN'''
+    '''call : identifier LPAREN argument_list_or_empty RPAREN
+            | class_type LPAREN argument_list_or_empty RPAREN'''
     p[0] = ('call', p[1], p[3])
 
 
@@ -182,6 +190,7 @@ def p_target(p):
 def p_assignment_statement(p):
     'assignment_statement : target ASSIGN expression'
     p[0] = ('assignment_statement', p[1], p[3])
+    print p[0]
 
 
 def p_string_literal(p):
@@ -210,6 +219,11 @@ def p_literal(p):
                | boolean_literal
                | NONE'''
     p[0] = p[1]
+
+
+# def p_user_defined_literal(p):
+#     '''user_defined_literal : literal UNDERSCORE ID'''
+#     p[0] = ('user_defined_literal', p[1], p[3])
 
 
 def error(p, s):
@@ -677,7 +691,8 @@ def p_declaration(p):
                    | var_declaration
                    | struct_definition
                    | enum_definition
-                   | state_definition'''
+                   | state_definition
+                   | replication_block'''
     p[0] = p[1]
 
 
@@ -758,8 +773,8 @@ def p_defaultproperties_assignments_1(p):
 
 
 def p_defaultproperties_assignments_2(p):
-    '''defaultproperties_assignments : defaultproperties_assignments COMMA defaultproperties_assignment'''
-    p[0] = p[1] + [p[3]]
+    '''defaultproperties_assignments : defaultproperties_assignments defaultproperties_assignment'''
+    p[0] = p[1] + [p[2]]
 
 
 def p_defaultproperties_assignments_or_empty(p):
@@ -976,7 +991,13 @@ def p_replication_statements_or_empty(p):
 
 def p_replication_block(p):
     '''replication_block : REPLICATION LCURLY replication_statements RCURLY'''
-    p[0] = ('replication_block', p[3])
+    p[0] = ('replication', p[3])
+
+
+def p_replication_block_or_empty(p):
+    '''replication_or_empty : replication_block
+                            | empty'''
+    p[0] = p[1]
 
 
 def p_statement_block(p):
