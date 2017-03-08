@@ -53,7 +53,8 @@ def p_binary_operator(p):
                        | DOT
                        | AND
                        | RIGHT_SHIFT
-                       | LEFT_SHIFT'''
+                       | LEFT_SHIFT
+                       | POW'''
     p[0] = p[1]
 
 
@@ -83,11 +84,11 @@ def p_construction_2(p):
 
 
 def generic_type_to_reference(p):
-    assert(p[0] in ('generic_type', 'identifier'))
+    assert(p[0] in ('generic_type', 'type', 'identifier'))
     if p[0] == 'generic_type':
         s = '_'.join([p[1][1], '_'.join([q[1][1] for q in p[2]])])
     else:
-        s = p[1]
+        s = p[1][1]
     return ('reference', 'class\'%s\'' % s)
 
 
@@ -187,8 +188,15 @@ def p_target(p):
     p[0] = p[1]
 
 
+def p_assignment_operator(p):
+    '''assignment_operator : ASSIGN
+                           | SCONCATASSIGN
+                           | SCONCATSPACEASSIGN'''
+    p[0] = p[1]
+
+
 def p_assignment_statement(p):
-    'assignment_statement : target ASSIGN expression'
+    'assignment_statement : target assignment_operator expression'
     p[0] = ('assignment_statement', p[1], p[3])
 
 
@@ -712,7 +720,7 @@ def p_declarations_or_empty(p):
 
 
 def p_defaultproperties_object(p):
-    'defaultproperties_object : BEGIN OBJECT CLASS ASSIGN type NAME ASSIGN ID defaultproperties_assignments_or_empty END OBJECT'
+    'defaultproperties_object : BEGIN OBJECT CLASS ASSIGN type NAME ASSIGN ID defaultproperties_object_assignments_or_empty END OBJECT'
     p[0] = ('defaultproperties_object', p[5], p[8], p[9])
 
 
@@ -766,14 +774,35 @@ def p_defaultproperties_key_2(p):
     p[0] = ('defaultproperties_key', p[1], p[3])
 
 
+def p_defaultproperties_object_assignments_1(p):
+    '''defaultproperties_object_assignments : defaultproperties_object_assignment'''
+    p[0] = [p[1]]
+
+
+def p_defaultproperties_object_assignments_2(p):
+    '''defaultproperties_object_assignments : defaultproperties_object_assignments defaultproperties_object_assignment'''
+    p[0] = p[1] + [p[2]]
+
+
+def p_defaultproperties_object_assignments_or_empty(p):
+    '''defaultproperties_object_assignments_or_empty : defaultproperties_object_assignments
+                                              | empty'''
+    p[0] = p[1]
+
+
+def p_defaultproperties_object_assignment(p):
+    'defaultproperties_object_assignment : defaultproperties_key ASSIGN defaultproperties_assignment_value'
+    p[0] = ('defaultproperties_assignment', p[1], p[3])
+
+
 def p_defaultproperties_assignments_1(p):
     '''defaultproperties_assignments : defaultproperties_assignment'''
     p[0] = [p[1]]
 
 
 def p_defaultproperties_assignments_2(p):
-    '''defaultproperties_assignments : defaultproperties_assignments defaultproperties_assignment'''
-    p[0] = p[1] + [p[2]]
+    '''defaultproperties_assignments : defaultproperties_assignments COMMA defaultproperties_assignment'''
+    p[0] = p[1] + [p[3]]
 
 
 def p_defaultproperties_assignments_or_empty(p):
@@ -924,18 +953,12 @@ def p_while_statement(p):
 def p_elif_statement(p):
     '''elif_statement : ELSE IF LPAREN expression RPAREN statement
                       | ELSE IF LPAREN expression RPAREN statement_block'''
-    p[0] = (p[4], p[6])
+    p[0] = ('elif_statement', p[4], p[6])
 
 
 def p_elif_statements(p):
     '''elif_statements : elif_statements elif_statement'''
     p[0] = p[1] + [p[2]]
-
-
-def p_elif_statements_or_empty(p):
-    '''elif_statements_or_empty : elif_statements
-                                | empty'''
-    p[0] = p[1]
 
 
 def p_else_statement(p):
@@ -1099,7 +1122,8 @@ def p_state_definition(p):
 
 precedence = (
     ('left', 'ADD', 'MINUS'),
-    ('left', 'MULTIPLY', 'DIVIDE')
+    ('left', 'MULTIPLY', 'DIVIDE'),
+    ('left', 'MINUS', 'INTEGER')
 )
 
 parser = yacc.yacc(debug=True)

@@ -223,7 +223,9 @@ tokens = [
     'SEQUAL',
     'MODULUS',
     'SCONCAT',
+    'SCONCATASSIGN',
     'SCONCATSPACE',
+    'SCONCATSPACEASSIGN',
     'DIVIDE',
     'REFERENCE',
     'DIRECTIVE',
@@ -240,7 +242,8 @@ tokens = [
     'ADD_ASSIGN',
     'SUBTRACT_ASSIGN',
     'MULTIPLY_ASSIGN',
-    'DIVIDE_ASSIGN'
+    'DIVIDE_ASSIGN',
+    'POW'
 ] + list(reserved.values())
 
 t_LPAREN = r'\('
@@ -276,7 +279,9 @@ t_COLON = r':'
 t_SEQUAL = r'~='
 t_MODULUS = r'%'
 t_SCONCAT = r'\$'
+t_SCONCATASSIGN = r'\$='
 t_SCONCATSPACE = r'@'
+t_SCONCATSPACEASSIGN = r'@='
 t_DIVIDE = r'/'
 t_BITWISE_AND = r'\&'
 t_BITWISE_OR = r'\|'
@@ -286,6 +291,7 @@ t_XOR = r'\^'
 t_BITWISE_NOT = r'~'
 t_LEQUAL = r'\<\='
 t_GEQUAL = r'\>\='
+t_POW = r'\*\*'
 
 
 def t_DEFAULT(t):
@@ -361,4 +367,4 @@ def t_error(t):
     pass
 
 
-lexer = lex.lex(debug=True)
+lexer = lex.lex(debug=False)

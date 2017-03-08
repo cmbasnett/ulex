@@ -16,7 +16,7 @@ class xuccparser():
         self.template_parameters = template_parameters
         # TODO: set lineno?
         lexer.lineno = 1
-        self.ast = parser.parse(s, debug=True)
+        self.ast = parser.parse(s, debug=False)
         self.classname = self.ast[1][0][1][1]
         s = render(self.ast)
         with open('okay.uc', 'w+') as f:
@@ -29,12 +29,12 @@ xucc = xuccparser()
 
 
 def r_indentation():
-    global xucc
     return '  ' * xucc.indentation
+    global xucc
 
 
 def r_constructor(p):
-    return 'function %s ctor(%s)\n%s' % (xucc.classname, render(p[1]), render(p[2]))
+    return 'function %s __ctor__(%s)\n%s' % (xucc.classname, render(p[1]), render(p[2]))
 
 
 def r_string_parameterized(p):
@@ -45,14 +45,23 @@ def r_function_modifiers(p):
     return ' '.join(render(q) for q in p[1])
 
 
-def r_elif_statements(p):
-    return render(p[1])
+# def r_elif_statements(p):
+#     return render(p[1])
+
+
+def r_elif_statement(p):
+    return 'else if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
+
+
+def r_else_statement(p):
+    return 'else\n{\n%s\n}' % render(p[1])
 
 
 def r_if_statement(p):
-    print p
-    if_statement = 'if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
-    return if_statement
+    s = 'if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
+    t = render(p[3])
+    u = render(p[4])
+    return '\n'.join([s, t, u])
 
 
 
@@ -375,7 +384,7 @@ def r_allocation(p):
 
 
 def r_construction(p):
-    return '(new %s).ctor(%s)' % (render(p[1]), render(p[2]))
+    return '(new %s).__ctor__(%s)' % (render(p[1]), render(p[2]))
 
 
 def render(p):
