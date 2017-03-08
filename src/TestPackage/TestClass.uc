@@ -1,28 +1,16 @@
 class TestClass extends Object;
 
-constructor(class<Actor> ActorClass)
+simulated state TestState extends ParentState
 {
-    Log("okay");
-}
-
-function T Okay()
-{
-    C = new TestClass(D);
+    simulated function Okay()
+    {
+        GotoState('Okay');
+    }
+Begin:
+    SaySomething();
 
     if (A)
     {
-        return 1;
-    }
-    else if (B)
-    {
-        return 2;
-    }
-    else if (C)
-    {
-        return 9;
-    }
-    else
-    {
-        return 3;
+        B();
     }
 }

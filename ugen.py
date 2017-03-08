@@ -90,6 +90,13 @@ def r_binary_operation(p):
     return ' '.join([render(p[2]), render(p[1]), render(p[3])])
 
 
+def r_replication_block(p):
+    return 'replication\n{\n' + '\n\n'.join(map(lambda x: render(x), p[1])) + '\n}'
+
+
+def r_replication_statement(p):
+    return p[1] + ' if (' + render(p[2]) + ')\n' + render(p[3]) + ';'
+
 def r_return_statement(p):
     if p[1] is None:
         return 'return'
@@ -250,16 +257,21 @@ def r_defaultproperties_key(p):
         return render(p[1])
 
 
+def r_defaultproperties_array(p):
+    return '(' + ','.join(map(lambda x: render(x), p[1])) + ')'
+
+
 def r_defaultproperties_object(p):
     return 'Begin Object Class=%s Name=%s\n%s\nEnd Object' % (render(p[1]), render(p[2]), '\n'.join(render(k) for k in p[3]))
 
 
 def r_class_declaration(p):
     global xucc
+    # TODO: pretty sure classes can extend nothing!
     return 'class {} extends {}\n{};'.format(xucc.classname, render(p[2]), render(p[3]))
 
 
-def r_defaultproperties_object_construction(p):
+def r_defaultproperties_object_arguments(p):
     return '(%s)' % ','.join(render(k) for k in p[1])
 
 
@@ -366,9 +378,31 @@ def r_do_statement(p):
 def r_static_call(p):
     return '%s.static.%s' % (render(p[1]), render(p[2]))
 
+def r_state_modifiers(p):
+    if p[1] is not None:
+        return ' '.join(p[1])
+    return ''
+
+
+def r_state_begin_block(p):
+    print render(p[1])
+    print 'okay'
+    return 'Begin:\n%s' % render(p[1])
+
 
 def r_state_definition(p):
-    return 'state %s\n{\n%s\n}' % (render(p[2]), render(p[3]))
+    m = render(p[1])
+    m = ' '.join([m, 'state', render(p[2]), 'extends', render(p[3])])
+    m = m + '\n{\n'
+    m = m + render(p[4]) + '\n'
+    # raise NotImplementedError
+    # TODO: print ignores
+    m = m + '\n'.join(map(lambda x: render(x), p[5:])) + '}'
+    return m
+
+
+def r_state_ignores(p):
+    return 'ignores %s;' % render(p[1])
 
 
 def r_while_statement(p):
@@ -397,8 +431,8 @@ def render(p):
         return p
     elif type(p) is list:
         for q in p:
-            u = eval('r_{}'.format(q[0]))
-            s += u(q)
+            rfunc = eval('r_{}'.format(q[0]))
+            s += rfunc(q)
     elif type(p) is tuple:
         u = eval('r_{}'.format(p[0]))
         s += u(p)

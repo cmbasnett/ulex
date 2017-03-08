@@ -131,7 +131,7 @@ reserved = {
     'function': 'FUNCTION',
     'global': 'GLOBAL',
     'globalconfig': 'GLOBALCONFIG',
-    'goto': 'GOTO',
+    # 'goto': 'GOTO',
     'if': 'IF',
     'ignores': 'IGNORES',
     'import': 'IMPORT',

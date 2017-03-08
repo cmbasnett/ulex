@@ -103,6 +103,7 @@ def p_identifier(p):
                   | CLASS
                   | OBJECT
                   | primitive_type
+                  | SWITCH
                   | SELF'''
     p[0] = ('identifier', p[1])
 
@@ -725,8 +726,14 @@ def p_defaultproperties_object(p):
 
 
 def p_defaultproperties_object_arguments(p):
-    '''defaultproperties_object_arguments : LPAREN defaultproperties_assignments RPAREN'''
-    p[0] = ('defaultproperties_object_construction', p[2])
+    '''defaultproperties_object_arguments : LPAREN defaultproperties_assignments_or_empty RPAREN'''
+    p[0] = ('defaultproperties_object_arguments', p[2] if p[2] is not None else [])
+
+
+def p_defaultproperties_assignments_or_empty(p):
+    '''defaultproperties_assignments_or_empty : defaultproperties_assignments
+                                              | empty'''
+    p[0] = p[1]
 
 def p_defaultproperties_or_empty(p):
     '''defaultproperties_or_empty : defaultproperties
@@ -738,8 +745,42 @@ def p_defaultproperties_assignment_value(p):
     '''defaultproperties_assignment_value : literal
                                           | reference
                                           | identifier
-                                          | defaultproperties_object_arguments'''
+                                          | defaultproperties_object_arguments
+                                          | defaultproperties_array'''
     p[0] = p[1]
+
+
+def p_defaultproperties_assignment_value_or_empty(p):
+    '''defaultproperties_assignment_value_or_empty : defaultproperties_assignment_value
+                                                   | empty'''
+    p[0] = p[1]
+
+
+def p_defaultproperties_object_arguments_or_empty(p):
+    '''defaultproperties_object_arguments_or_empty : defaultproperties_object_arguments
+                                                   | empty'''
+    p[0] = p[1] if p[1] is not None else []
+
+
+def p_defaultproperties_array_arguments_1(p):
+    '''defaultproperties_array_arguments : defaultproperties_object_arguments_or_empty'''
+    p[0] = [p[1]]
+
+
+def p_defaultproperties_array_arguments_2(p):
+    '''defaultproperties_array_arguments : defaultproperties_array_arguments_or_empty COMMA defaultproperties_object_arguments_or_empty'''
+    p[0] = p[1] + [p[3]]
+
+
+def p_defaultproperties_array_arguments_or_empty(p):
+    '''defaultproperties_array_arguments_or_empty : defaultproperties_array_arguments
+                                                  | empty'''
+    p[0] = p[1]
+
+
+def p_defaultproperties_array(p):
+    '''defaultproperties_array : LPAREN defaultproperties_array_arguments_or_empty RPAREN'''
+    p[0] = ('defaultproperties_array', p[2])
 
 
 def p_defaultproperties_declaration(p):
@@ -786,7 +827,7 @@ def p_defaultproperties_object_assignments_2(p):
 
 def p_defaultproperties_object_assignments_or_empty(p):
     '''defaultproperties_object_assignments_or_empty : defaultproperties_object_assignments
-                                              | empty'''
+                                                     | empty'''
     p[0] = p[1]
 
 
@@ -805,15 +846,14 @@ def p_defaultproperties_assignments_2(p):
     p[0] = p[1] + [p[3]]
 
 
-def p_defaultproperties_assignments_or_empty(p):
-    '''defaultproperties_assignments_or_empty : defaultproperties_assignments
-                                              | empty'''
-    p[0] = p[1]
-
-
 def p_defaultproperties_assignment(p):
     'defaultproperties_assignment : defaultproperties_key ASSIGN defaultproperties_assignment_value'
     p[0] = ('defaultproperties_assignment', p[1], p[3])
+
+def p_defaultproperties_assignment_or_empty(p):
+    '''defaultproperties_assignment_or_empty : defaultproperties_assignment
+                                             | empty'''
+    p[0] = p[1]
 
 
 def p_defaultproperties(p):
@@ -991,8 +1031,8 @@ def p_reliability(p):
 
 
 def p_replication_statement(p):
-    'replication_statement : reliability IF LPAREN expression RPAREN identifier_list SEMICOLON'
-    p[0] = p[3], p[5]
+    'replication_statement : reliability IF LPAREN expression RPAREN identifier_list_or_empty SEMICOLON'
+    p[0] = ('replication_statement', p[1], p[4], p[6])
 
 
 def p_replication_statements_1(p):
@@ -1013,7 +1053,7 @@ def p_replication_statements_or_empty(p):
 
 def p_replication_block(p):
     '''replication_block : REPLICATION LCURLY replication_statements RCURLY'''
-    p[0] = ('replication', p[3])
+    p[0] = ('replication_block', p[3])
 
 
 def p_replication_block_or_empty(p):
@@ -1095,7 +1135,8 @@ def p_do_statement_2(p):
 
 
 def p_state_modifier(p):
-    '''state_modifier : SIMULATED'''
+    '''state_modifier : SIMULATED
+                      | AUTO'''
     p[0] = p[1]
 
 
@@ -1112,12 +1153,33 @@ def p_state_modifiers_2(p):
 def p_state_modifiers_or_empty(p):
     '''state_modifiers_or_empty : state_modifiers
                                 | empty'''
-    p[0] = p[1]
+    p[0] = ('state_modifiers', p[1])
 
 
 def p_state_definition(p):
-    'state_definition : state_modifiers_or_empty STATE identifier LCURLY declarations_or_empty RCURLY'
-    p[0] = ('state_definition', p[1], p[3], p[5])
+    'state_definition : state_modifiers_or_empty STATE identifier extends LCURLY state_ignores_or_empty declarations_or_empty state_begin_block_or_empty RCURLY'
+    p[0] = ('state_definition', p[1], p[3], p[4], p[6], p[7], p[8])
+
+
+def p_state_begin_block_or_empty(p):
+    '''state_begin_block_or_empty : state_begin_block
+                                  | empty'''
+    p[0] = p[1]
+
+def p_state_begin_block(p):
+    '''state_begin_block : BEGIN COLON statements_or_empty'''
+    p[0] = ('state_begin_block', p[3])
+
+
+def p_state_ignores(p):
+    '''state_ignores : IGNORES identifier_list_or_empty SEMICOLON'''
+    p[0] = ('state_ignores', p[2])
+
+
+def p_state_ignores_or_empty(p):
+    '''state_ignores_or_empty : state_ignores
+                              | empty'''
+    p[0] = p[1]
 
 
 precedence = (
