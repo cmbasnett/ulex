@@ -190,7 +190,6 @@ def p_target(p):
 def p_assignment_statement(p):
     'assignment_statement : target ASSIGN expression'
     p[0] = ('assignment_statement', p[1], p[3])
-    print p[0]
 
 
 def p_string_literal(p):
@@ -586,7 +585,7 @@ def p_function_argument_modifier(p):
                                   | COERCE
                                   | OUT
                                   | SKIP'''
-    p[0] = p[1]
+    p[0] = ('function_argument_modifier', p[1])
 
 
 def p_function_argument_modifiers_1(p):
@@ -607,7 +606,7 @@ def p_function_argument_modifiers_or_empty(p):
 
 def p_function_argument(p):
     '''function_argument : function_argument_modifiers_or_empty type identifier arrayindex_or_empty'''
-    p[0] = ('function_argument', p[2], p[1], p[3], p[4])
+    p[0] = ('function_argument', p[1], p[2], p[3], p[4])
 
 
 def p_function_arguments_1(p):
@@ -942,7 +941,7 @@ def p_elif_statements_or_empty(p):
 def p_else_statement(p):
     '''else_statement : ELSE statement
                       | ELSE statement_block'''
-    p[0] = p[2]
+    p[0] = [('else_statement', p[2])]
 
 
 def p_enum_declaration(p):
@@ -957,8 +956,8 @@ def p_else_statement_or_empty(p):
 
 
 def p_if_statement(p):
-    '''if_statement : IF LPAREN expression RPAREN statement       elif_statements_or_empty else_statement_or_empty
-                    | IF LPAREN expression RPAREN statement_block elif_statements_or_empty else_statement_or_empty'''
+    '''if_statement : IF LPAREN expression RPAREN statement       elif_statements else_statement
+                    | IF LPAREN expression RPAREN statement_block elif_statements else_statement'''
     p[0] = ('if_statement', p[3], p[5], p[6], p[7])
 
 

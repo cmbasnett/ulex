@@ -7,4 +7,5 @@ root = 'C:\Users\colin_000\Documents\GitHub\DarkestHour/DH_Engine/Classes'
 #     xucc.compile(open(os.path.join(root, filename)).read())
 
 # xucc.compile(open(os.path.join(root, 'DHAntiVehicleProjectile.uc')).read())
-print xucc.compile(open('src/TestPackage/DarkestHourGame.uc').read())
+# xucc.compile(open('src/TestPackage/DarkestHourGame.uc').read())
+xucc.compile(open('src/TestPackage/TestClass.uc').read())

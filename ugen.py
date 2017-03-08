@@ -16,7 +16,7 @@ class xuccparser():
         self.template_parameters = template_parameters
         # TODO: set lineno?
         lexer.lineno = 1
-        self.ast = parser.parse(s)
+        self.ast = parser.parse(s, debug=True)
         self.classname = self.ast[1][0][1][1]
         s = render(self.ast)
         with open('okay.uc', 'w+') as f:
@@ -45,8 +45,15 @@ def r_function_modifiers(p):
     return ' '.join(render(q) for q in p[1])
 
 
+def r_elif_statements(p):
+    return render(p[1])
+
+
 def r_if_statement(p):
-    return 'if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
+    print p
+    if_statement = 'if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
+    return if_statement
+
 
 
 def r_pre_unary_operation(p):
@@ -165,8 +172,14 @@ def r_config(p):
 
 
 def r_function_argument(p):
-    return '{} {}'.format(render(p[1]), render(p[3]))
+    s = ' '.join(filter(lambda x: x != '', map(lambda y: render(y), p[1:4])))
+    if p[4] is not None:
+        s = '%s[%d]' % (s, p[4])
+    return s
 
+
+def r_function_argument_modifier(p):
+    return p[1]
 
 def r_function_arguments(p):
     return ', '.join(render(q) for q in p[1])
