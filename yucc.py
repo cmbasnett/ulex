@@ -69,7 +69,7 @@ def p_arraycount(p):
 
 
 def p_allocation_1(p):
-    'allocation : NEW REFERENCE'
+    'allocation : NEW primary'
     p[0] = ('allocation', p[2])
 
 
@@ -104,6 +104,8 @@ def p_identifier(p):
                   | OBJECT
                   | primitive_type
                   | SWITCH
+                  | EVENT
+                  | ASSERT
                   | SELF'''
     p[0] = ('identifier', p[1])
 
@@ -317,7 +319,7 @@ def p_var_modifiers_2(p):
 def p_var_modifiers_or_empty(p):
     '''var_modifiers_or_empty : var_modifiers
                               | empty'''
-    p[0] = p[1]
+    p[0] = ('var_modifiers', p[1])
 
 
 def p_var_declaration(p):
@@ -326,8 +328,8 @@ def p_var_declaration(p):
 
 
 def p_struct_var_declaration(p):
-    'struct_var_declaration : VAR type var_name_list SEMICOLON'
-    p[0] = ('struct_var_declaration', p[2], p[3])
+    'struct_var_declaration : VAR paren_id_or_empty var_modifiers_or_empty var_type var_name_list SEMICOLON'
+    p[0] = ('struct_var_declaration', p[2], p[3], p[4], p[5])
 
 
 def p_struct_var_declarations_1(p):
@@ -386,12 +388,18 @@ def p_var_type(p):
     p[0] = p[1]
 
 
+def p_deep_type(p):
+    '''deep_type : identifier PERIOD identifier'''
+    p[0] = ('deep_type', p[1], p[3])
+
+
 def p_type(p):
     '''type : primitive_type
             | array
             | generic_type
             | class_type
-            | identifier'''
+            | identifier
+            | deep_type'''
     p[0] = ('type', p[1])
 
 
@@ -488,7 +496,9 @@ def p_class_modifier(p):
                       | NOEXPORT
                       | dependson
                       | within
-                      | template'''
+                      | template
+                      | hidecategories
+                      | showcategories'''
     p[0] = p[1]
 
 
@@ -975,13 +985,14 @@ def p_compound_statement(p):
 
 
 def p_foreach_statement(p):
-    '''foreach_statement : FOREACH identifier LPAREN argument_list_or_empty RPAREN statement_block
-                         | FOREACH attribute LPAREN argument_list_or_empty RPAREN statement_block'''
-    p[0] = ('foreach_statement', p[2], p[4], p[6])
+    '''foreach_statement : FOREACH primary statement_block
+                         | FOREACH primary statement'''
+    p[0] = ('foreach_statement', p[2], p[3])
 
 
 def p_for_statement(p):
-    '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN statement_block'''
+    '''for_statement : FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN statement_block
+                     | FOR LPAREN simple_statement_list_or_empty SEMICOLON expression_or_empty SEMICOLON simple_statement RPAREN statement'''
     p[0] = ('for_statement', p[3], p[5], p[7], p[9])
 
 
@@ -1095,7 +1106,7 @@ def p_switch_statement(p):
 
 
 def p_switch_case_1(p):
-    'switch_case : CASE primary COLON statements_or_empty'
+    'switch_case : CASE atom COLON statements_or_empty'
     p[0] = ('switch_case', p[2], p[4])
 
 
@@ -1158,8 +1169,19 @@ def p_state_modifiers_or_empty(p):
 
 
 def p_state_definition(p):
-    'state_definition : state_modifiers_or_empty STATE identifier extends LCURLY state_ignores_or_empty declarations_or_empty state_begin_block_or_empty RCURLY'
-    p[0] = ('state_definition', p[1], p[3], p[4], p[6], p[7], p[8])
+    'state_definition : state_modifiers_or_empty STATE paren_or_empty identifier extends LCURLY state_ignores_or_empty declarations_or_empty state_begin_block_or_empty RCURLY'
+    p[0] = ('state_definition', p[1], p[3], p[4], p[5], p[6], p[7], p[9])
+
+
+def p_paren(p):
+    'paren : LPAREN RPAREN'
+    p[0] = ('paren')
+
+
+def p_paren_or_empty(p):
+    '''paren_or_empty : paren
+                      | empty'''
+    p[0] = p[1]
 
 
 def p_state_begin_block_or_empty(p):
@@ -1183,10 +1205,19 @@ def p_state_ignores_or_empty(p):
     p[0] = p[1]
 
 
+def p_hidecategories(p):
+    '''hidecategories : HIDECATEGORIES LPAREN identifier_list_or_empty RPAREN'''
+    p[0] = ('hidecategories', p[3])
+
+
+def p_showcategories(p):
+    '''showcategories : SHOWCATEGORIES LPAREN identifier_list_or_empty RPAREN'''
+    p[0] = ('showcategories', p[3])
+
+
 precedence = (
     ('left', 'ADD', 'MINUS'),
-    ('left', 'MULTIPLY', 'DIVIDE'),
-    ('left', 'MINUS', 'INTEGER')
+    ('left', 'MULTIPLY', 'DIVIDE')
 )
 
-parser = yacc.yacc(debug=True)
+parser = yacc.yacc(debug=False)

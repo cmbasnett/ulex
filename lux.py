@@ -309,7 +309,7 @@ def t_DIRECTIVE(t):
 
 
 def t_REFERENCE(t):
-    r'([a-zA-Z0-9_\-]+)\s*\'([a-zA-Z0-9_\-\.]+)\''
+    r'([a-zA-Z0-9_\-]+)\'([a-zA-Z0-9_\-\.\&]+)\''
     return t
 
 

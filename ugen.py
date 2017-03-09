@@ -155,6 +155,12 @@ def r_var_name(p):
         return '%s[%s]' % (render(p[1]), render(p[2]))
 
 
+def r_var_modifiers(p):
+    if p[1] is None:
+        return ''
+    return ' '.join(map(lambda x: render(x), p[1]))
+
+
 def r_array(p):
     return 'array<{}>'.format(render(p[1]))
 
@@ -313,7 +319,7 @@ def r_struct_var_declarations(p):
 
 
 def r_struct_var_declaration(p):
-    return 'var %s %s;' % (render(p[1]), render(p[2]))
+    return 'var%s %s %s %s;' % tuple(map(lambda x: render(x), p[1:]))
 
 
 def r_default(p):
@@ -336,7 +342,7 @@ def r_reference(p):
 
 
 def r_foreach_statement(p):
-    return 'foreach %s(%s)\n{\n%s\n}' % (render(p[1]), render(p[2]), render(p[3]))
+    return 'foreach %s\n{\n%s\n}' % (render(p[1]), render(p[2]))
 
 
 def r_vect(p):
@@ -387,14 +393,26 @@ def r_state_begin_block(p):
     return 'Begin:\n%s' % render(p[1])
 
 
+def r_hidecategories(p):
+    return 'hidecategories(' + render(p[1]) + ')'
+
+
+def r_showcategories(p):
+    return 'showcategories(' + render(p[1]) + ')'
+
+
+def r_paren(p):
+    return '()'
+
+
 def r_state_definition(p):
     m = render(p[1])
-    m = ' '.join([m, 'state', render(p[2]), 'extends', render(p[3])])
+    m = ' '.join([m, 'state', render(p[2]), render(p[3]), 'extends', render(p[4])])
     m = m + '\n{\n'
-    m = m + render(p[4]) + '\n'
+    m = m + render(p[5]) + '\n'
     # raise NotImplementedError
     # TODO: print ignores
-    m = m + '\n'.join(map(lambda x: render(x), p[5:])) + '}'
+    m = m + '\n'.join(map(lambda x: render(x), p[6:])) + '}'
     return m
 
 
@@ -416,6 +434,10 @@ def r_allocation(p):
 
 def r_construction(p):
     return '(new %s).__ctor__(%s)' % (render(p[1]), render(p[2]))
+
+
+def r_deep_type(p):
+    return '.'.join(map(lambda x: render(x), p[1:]))
 
 
 def render(p):
