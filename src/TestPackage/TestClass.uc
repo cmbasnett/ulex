@@ -1,16 +1,8 @@
 class TestClass extends Object;
 
-simulated state TestState extends ParentState
+function Okay()
 {
-    simulated function Okay()
+    foreach A.B()
     {
-        GotoState('Okay');
-    }
-Begin:
-    SaySomething();
-
-    if (A)
-    {
-        B();
     }
 }

@@ -975,7 +975,8 @@ def p_compound_statement(p):
 
 
 def p_foreach_statement(p):
-    'foreach_statement : FOREACH identifier LPAREN argument_list_or_empty RPAREN statement_block'
+    '''foreach_statement : FOREACH identifier LPAREN argument_list_or_empty RPAREN statement_block
+                         | FOREACH attribute LPAREN argument_list_or_empty RPAREN statement_block'''
     p[0] = ('foreach_statement', p[2], p[4], p[6])
 
 

@@ -183,7 +183,6 @@ def r_function_definition(p):
 
 
 def r_config(p):
-    print p[0]
     return p[0]
 
 
@@ -385,8 +384,6 @@ def r_state_modifiers(p):
 
 
 def r_state_begin_block(p):
-    print render(p[1])
-    print 'okay'
     return 'Begin:\n%s' % render(p[1])
 
 
