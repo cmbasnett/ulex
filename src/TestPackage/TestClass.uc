@@ -1,13 +1,13 @@
 class TestClass extends Object;
 
-function Okay()
+constructor(int A)
 {
-    foreach A.B("okay")
-    {
+    Log(@"The number was {A}");
+}
 
-    }
+function Foo()
+{
+    local TestClass B;
 
-    foreach AllActors(class'ROLevelInfo', LI)
-    {
-    }
+    B = new TestClass(3);
 }

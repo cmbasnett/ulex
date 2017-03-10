@@ -13,32 +13,27 @@ class xuccparser():
         self.indentation = 0
 
     def compile(self, s, template_parameters=[]):
-        self.template_parameters = template_parameters
-        # TODO: set lineno?
+        self.template_arguments = ['string', 'Object']
         lexer.lineno = 1
         self.ast = parser.parse(s, debug=False)
-        self.classname = self.ast[1][0][1][1]
-        s = render(self.ast)
+        self.classname = '_'.join([self.ast[1][0][1][1]] + self.template_arguments)
         with open('okay.uc', 'w+') as f:
             # print s
-            f.write(s)
+            f.write(render(self.ast))
         return s
 
 
 xucc = xuccparser()
 
 
-def r_indentation():
-    return '  ' * xucc.indentation
-    global xucc
+def r_within(p):
+    return 'within(' + render(p[1]) + ')'
 
 
 def r_constructor(p):
+    # create the 'return self' as the last line
+    p[2][2][1].append(('codeline', ('return_statement', ('identifier', 'self'))))
     return 'function %s __ctor__(%s)\n%s' % (xucc.classname, render(p[1]), render(p[2]))
-
-
-def r_string_parameterized(p):
-    return p[1]
 
 
 def r_function_modifiers(p):
@@ -58,10 +53,15 @@ def r_else_statement(p):
 
 
 def r_if_statement(p):
-    s = 'if (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
-    t = render(p[3])
+    s = '\t' * xucc.indentation + 'if (' + render(p[1]) + ')\n'
+    s += '\t' * xucc.indentation + '{\n'
+    xucc.indentation += 1
+    s += render(p[2])
+    xucc.indentation -= 1
+    s += '\n' + ('\t' * xucc.indentation) + '}'
+    t = '\n'.join(map(lambda x: render(x), p[3]))
     u = render(p[4])
-    return '\n'.join([s, t, u])
+    return '\n'.join(filter(lambda x: x != '', [s, t, u]))
 
 
 
@@ -130,16 +130,18 @@ def r_subscription(p):
 def r_statements(p):
     if p[1] is None:
         return ''
+    print [render(q) for q in p[1]]
     return '\n'.join(render(q) for q in p[1])
 
 
 def r_function_body(p):
-    s = '\n\n'.join([render(p[1]), render(p[2])]).strip()
-    return '{\n%s\n}' % s
+    s = '\n\n'.join([render(p[1]), render(p[2])]).strip('\n')
+    s = '{\n%s\n}' % s
+    return s
 
 
 def r_local_declaration(p):
-    return 'local %s %s;' % (render(p[1]), render(p[2]))
+    return '\t' * xucc.indentation + ('local %s %s;' % (render(p[1]), render(p[2])))
 
 
 def r_local_declarations(p):
@@ -174,18 +176,26 @@ def r_var_name_list(p):
 
 
 def r_var_declaration(p):
-    return 'var %s %s;' % (render(p[1]), render(p[2]))
+    # print p[3]
+    return 'var%s %s %s %s;' % (render(p[1]), render(p[2]), render(p[3]), render(p[4]))
 
+
+def r_paren_id(p):
+    return '(' + render(p[1]) + ')'
 
 def r_function_declaration(p):
-    return '%s(%s)' % (' '.join(filter(None, [render(q) for q in (p[1], p[4], p[3], p[2])])), render(p[5]))
+    return '%s(%s)' % (' '.join(filter(None, [render(q) for q in (p[4], p[1], p[3], p[2])])), render(p[5]))
 
 
 def r_function_definition(p):
     if p[2] is None:
         return '{};'.format(render(p[1]))
     else:
-        return '{}\n{}'.format(render(p[1]), render(p[2]))
+        s = render(p[1])
+        xucc.indentation += 1
+        t = render(p[2])
+        xucc.indentation -= 1
+        return '\n'.join([s, t])
 
 
 def r_config(p):
@@ -199,8 +209,9 @@ def r_function_argument(p):
     return s
 
 
-def r_function_argument_modifier(p):
-    return p[1]
+def r_function_argument_modifiers(p):
+    return ' '.join(p[1])
+
 
 def r_function_arguments(p):
     return ', '.join(render(q) for q in p[1])
@@ -217,12 +228,13 @@ def r_identifier_list(p):
 
 
 def r_template(p):
-    global template_parameters
-    template_parameters = [render(q) for q in p[1][1]]
+    global xucc
+    xucc.template_parameters = [render(q) for q in p[1][1]]
     return ''
 
 
 def r_generic_type(p):
+    global  xucc
     return '{}_{}'.format(render(p[1]), '_'.join(render(q) for q in p[2]))
 
 
@@ -273,7 +285,7 @@ def r_defaultproperties_object(p):
 def r_class_declaration(p):
     global xucc
     # TODO: pretty sure classes can extend nothing!
-    return 'class {} extends {}\n{};'.format(xucc.classname, render(p[2]), render(p[3]))
+    return 'class {} {}\n{};'.format(xucc.classname, render(p[2]), render(p[3]))
 
 
 def r_defaultproperties_object_arguments(p):
@@ -334,7 +346,7 @@ def r_super_call(p):
     if p[1] is None:
         return 'super.%s' % render(p[2])
     else:
-        return 'super(%s).%s' % (render(p[1]), render(p[2]))
+        return 'super%s.%s' % (render(p[1]), render(p[2]))
 
 
 def r_reference(p):
@@ -350,7 +362,8 @@ def r_vect(p):
 
 
 def r_codeline(p):
-    return '%s;' % render(p[1])
+    global  xucc
+    return '\t' * xucc.indentation + '%s;' % render(p[1])
 
 
 def r_start(p):
@@ -381,7 +394,10 @@ def r_do_statement(p):
 
 
 def r_static_call(p):
-    return '%s.static.%s' % (render(p[1]), render(p[2]))
+    if len(p) == 2:
+        return 'static.%s' % render(p[1])
+    else:
+        return '%s.static.%s' % (render(p[1]), render(p[2]))
 
 def r_state_modifiers(p):
     if p[1] is not None:
@@ -401,18 +417,19 @@ def r_showcategories(p):
     return 'showcategories(' + render(p[1]) + ')'
 
 
+def r_dependson(p):
+    return 'dependson(' + render(p[1]) + ')'
+
+
 def r_paren(p):
     return '()'
 
 
 def r_state_definition(p):
     m = render(p[1])
-    m = ' '.join([m, 'state', render(p[2]), render(p[3]), 'extends', render(p[4])])
+    m = ' '.join(filter(lambda x: x != '', [m, 'state', render(p[2]), render(p[3]), render(p[4])]))
     m = m + '\n{\n'
-    m = m + render(p[5]) + '\n'
-    # raise NotImplementedError
-    # TODO: print ignores
-    m = m + '\n'.join(map(lambda x: render(x), p[6:])) + '}'
+    m = m + '\n'.join(map(lambda x: render(x), p[5:])) + '}'
     return m
 
 
@@ -421,7 +438,14 @@ def r_state_ignores(p):
 
 
 def r_while_statement(p):
-    return 'while (%s)\n{\n%s\n}' % (render(p[1]), render(p[2]))
+    global xucc
+    s = '\t' * xucc.indentation + 'while (' + render(p[1]) + ')\n'
+    s += '\t' * xucc.indentation + '{\n'
+    xucc.indentation += 1
+    s += render(p[2])
+    xucc.indentation -= 1
+    s += '\n' + ('\t' * xucc.indentation) + '}'
+    return s
 
 
 def r_global_call(p):
@@ -429,7 +453,11 @@ def r_global_call(p):
 
 
 def r_allocation(p):
-    return 'new %s' % render(p[1])
+    s = ['new']
+    if p[1] is not None:
+        s.append(render(p[1]))
+    s.append(render(p[2]))
+    return ' '.join(s)
 
 
 def r_construction(p):
@@ -438,6 +466,10 @@ def r_construction(p):
 
 def r_deep_type(p):
     return '.'.join(map(lambda x: render(x), p[1:]))
+
+
+def r_extends(p):
+    return ' '.join(['extends', render(p[1])])
 
 
 def render(p):

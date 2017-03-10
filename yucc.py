@@ -54,7 +54,13 @@ def p_binary_operator(p):
                        | AND
                        | RIGHT_SHIFT
                        | LEFT_SHIFT
-                       | POW'''
+                       | RIGHT_SHIFT_ARITHMETIC
+                       | POW
+                       | CROSS
+                       | BITWISE_AND
+                       | BITWISE_OR
+                       | XOR
+                       | LOGICAL_XOR'''
     p[0] = p[1]
 
 
@@ -69,8 +75,13 @@ def p_arraycount(p):
 
 
 def p_allocation_1(p):
-    'allocation : NEW primary'
-    p[0] = ('allocation', p[2])
+    '''allocation : NEW type
+                  | NEW reference'''
+    p[0] = ('allocation', None, p[2])
+
+def p_allocation_2(p):
+    'allocation : NEW LPAREN argument_list_or_empty RPAREN primary'
+    p[0] = ('allocation', p[3], p[5])
 
 
 def p_construction_1(p):
@@ -145,7 +156,8 @@ def p_primary(p):
                | global_call
                | call
                | unary_operation
-               | binary_operation'''
+               | binary_operation
+               | expression_parenthesized'''
     p[0] = p[1]
 
 
@@ -324,7 +336,7 @@ def p_var_modifiers_or_empty(p):
 
 def p_var_declaration(p):
     'var_declaration : VAR paren_id_or_empty var_modifiers_or_empty var_type var_name_list SEMICOLON'
-    p[0] = ('var_declaration', p[4], p[5], p[3], p[2])
+    p[0] = ('var_declaration', p[2], p[3], p[4], p[5])
 
 
 def p_struct_var_declaration(p):
@@ -461,13 +473,15 @@ def p_id_or_empty(p):
     p[0] = p[1]
 
 
+def p_paren_id(p):
+    'paren_id : LPAREN id_or_empty RPAREN'
+    p[0] = ('paren_id', p[2])
+
+
 def p_paren_id_or_empty(p):
-    '''paren_id_or_empty : LPAREN id_or_empty RPAREN
+    '''paren_id_or_empty : paren_id
                          | empty'''
-    if p[1] is None:
-        p[0] = p[1]
-    else:
-        p[0] = p[2]
+    p[0] = p[1]
 
 
 def p_config(p):
@@ -547,7 +561,7 @@ def p_extends_1(p):
 
 def p_extends_2(p):
     'extends : EXTENDS type'
-    p[0] = p[2]
+    p[0] = ('extends', p[2])
 
 
 def p_class_declaration(p):
@@ -569,7 +583,8 @@ def p_function_modifier(p):
                          | SIMULATED
                          | SINGULAR
                          | STATIC
-                         | PRIVATE'''
+                         | PRIVATE
+                         | PROTECTED'''
     p[0] = p[1]
 
 
@@ -604,7 +619,7 @@ def p_function_argument_modifier(p):
                                   | COERCE
                                   | OUT
                                   | SKIP'''
-    p[0] = ('function_argument_modifier', p[1])
+    p[0] = p[1]
 
 
 def p_function_argument_modifiers_1(p):
@@ -620,7 +635,7 @@ def p_function_argument_modifiers_2(p):
 def p_function_argument_modifiers_or_empty(p):
     '''function_argument_modifiers_or_empty : function_argument_modifiers
                                             | empty'''
-    p[0] = p[1]
+    p[0] = ('function_argument_modifiers', p[1] if p[1] is not None else [])
 
 
 def p_function_argument(p):
@@ -672,8 +687,7 @@ def p_function_declaration(p):
     '''function_declaration : function_modifiers_or_empty function_type function_modifiers_or_empty type identifier LPAREN function_arguments_or_empty RPAREN
                             | function_modifiers_or_empty function_type function_modifiers_or_empty identifier LPAREN function_arguments_or_empty RPAREN'''
     # TODO: this is ugly
-    function_modifiers = p[1]
-    function_modifiers[1] + p[3][1]
+    function_modifiers = ('function_modifiers', tuple(list(p[1][1]) + list(p[3][1])))
     if len(p) == 9:  # return type
         p[0] = ('function_declaration', p[2], p[5], p[4], function_modifiers, p[7])
     else:            # no return type
@@ -882,9 +896,14 @@ def p_function_body(p):
     p[0] = ('function_body', p[1], p[2])
 
 
-def p_expression_1(p):
-    'expression : LPAREN expression RPAREN'
+def p_expression_parenthesized(p):
+    'expression_parenthesized : LPAREN expression RPAREN'
     p[0] = ('expression_parenthesized', p[2])
+
+
+def p_expression_1(p):
+    'expression : expression_parenthesized'
+    p[0] = p[1]
 
 
 def p_expression_2(p):
@@ -954,6 +973,7 @@ def p_codeline(p):
 
 def p_statement(p):
     '''statement : codeline
+                 | const_declaration
                  | compound_statement'''
     p[0] = p[1]
 
@@ -1096,8 +1116,12 @@ def p_global_call(p):
 
 
 def p_static_call(p):
-    'static_call : primary PERIOD STATIC PERIOD call'
-    p[0] = ('static_call', p[1], p[5])
+    '''static_call : primary PERIOD STATIC PERIOD call
+                   | STATIC PERIOD call'''
+    if len(p) == 6:
+        p[0] = ('static_call', p[1], p[5])
+    else:
+        p[0] = ('static_call', p[3])
 
 
 def p_switch_statement(p):
@@ -1142,7 +1166,8 @@ def p_do_statement_1(p):
 
 
 def p_do_statement_2(p):
-    'do_statement : DO statement_block UNTIL LPAREN expression RPAREN SEMICOLON'
+    '''do_statement : DO statement_block UNTIL LPAREN expression RPAREN SEMICOLON
+                    | DO statement_block UNTIL LPAREN expression RPAREN'''
     p[0] = ('do_statement', p[2], p[5])
 
 
@@ -1170,12 +1195,12 @@ def p_state_modifiers_or_empty(p):
 
 def p_state_definition(p):
     'state_definition : state_modifiers_or_empty STATE paren_or_empty identifier extends LCURLY state_ignores_or_empty declarations_or_empty state_begin_block_or_empty RCURLY'
-    p[0] = ('state_definition', p[1], p[3], p[4], p[5], p[6], p[7], p[9])
+    p[0] = ('state_definition', p[1], p[3], p[4], p[5], p[7], p[8], p[9])
 
 
 def p_paren(p):
     'paren : LPAREN RPAREN'
-    p[0] = ('paren')
+    p[0] = ('paren', None)
 
 
 def p_paren_or_empty(p):

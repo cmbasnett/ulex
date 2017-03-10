@@ -109,6 +109,7 @@ reserved = {
     'collapsecategories': 'COLLAPSECATEGORIES',
     'constructor': 'CONSTRUCTOR',
     'continue': 'CONTINUE',
+    'cross': 'CROSS',
     'defaultproperties': 'DEFAULTPROPERTIES',
     'delegate': 'DELEGATE',
     'do': 'DO',
@@ -234,6 +235,7 @@ tokens = [
     'BITWISE_OR',
     'LEFT_SHIFT',
     'RIGHT_SHIFT',
+    'RIGHT_SHIFT_ARITHMETIC',
     'XOR',
     'BITWISE_NOT',
     'ID',
@@ -243,7 +245,8 @@ tokens = [
     'SUBTRACT_ASSIGN',
     'MULTIPLY_ASSIGN',
     'DIVIDE_ASSIGN',
-    'POW'
+    'POW',
+    'LOGICAL_XOR'
 ] + list(reserved.values())
 
 t_LPAREN = r'\('
@@ -286,8 +289,10 @@ t_DIVIDE = r'/'
 t_BITWISE_AND = r'\&'
 t_BITWISE_OR = r'\|'
 t_LEFT_SHIFT = r'\<\<'
-t_RIGHT_SHIFT = r'\>\>'
+t_RIGHT_SHIFT_ARITHMETIC = r'\>\>'
+t_RIGHT_SHIFT = r'\>\>\>'
 t_XOR = r'\^'
+t_LOGICAL_XOR = r'\^\^'
 t_BITWISE_NOT = r'~'
 t_LEQUAL = r'\<\='
 t_GEQUAL = r'\>\='
